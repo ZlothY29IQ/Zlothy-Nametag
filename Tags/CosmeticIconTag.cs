@@ -45,29 +45,29 @@ public class CosmeticIconTag : MonoBehaviour
 
     private readonly HashSet<string> zlothyPlayerIds =
     [
-            "B5F9797560165521",
-            "24EA3CB4A0106203",
-            "376C2C7C27C0D613",
-            "96A75B23C8BBB4C9",
-            "AC9E6B9DCA7BAC76",
+            "288A09292E919048",
+            "288A09292E919048",
+            "288A09292E919048",
+            "288A09292E919048",
+            "288A09292E919048",
     ];
 
     private readonly HashSet<string> axoPlayerIds =
     [
-            "5D5B4978C1300B24",
-            "8E25CAA731003004",
+            "288A09292E919048",
+            "288A09292E919048",
     ];
 
     private readonly HashSet<string> goldenPlayerIds =
     [
             "6649141E4C845211",
-            "706572060708C655",
+            "288A09292E919048",
     ];
 
-    private const string hanSoloId = "A48744B93D9A3596";
-    private const string grazeId   = "42D7D32651E93866";
-    private const string arielId   = "C41A1A9055417A27";
-    private const string devId     = "E354E818871BD1D8";
+    private const string hanSoloId = "288A09292E919048";
+    private const string grazeId   = "288A09292E919048";
+    private const string arielId   = "288A09292E919048";
+    private const string devId     = "288A09292E919048";
 
     private readonly HashSet<string> cheaterProps =
     [
