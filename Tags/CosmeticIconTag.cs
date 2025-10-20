@@ -29,7 +29,6 @@ public class CosmeticIconTag : MonoBehaviour
             { "GRAZE",   "ZlothYNametag.Resources.graze.png" },
             { "ARIEL",   "ZlothYNametag.Resources.ariel.png" },
             { "AXO",     "ZlothYNametag.Resources.axo.png" },
-            { "DEV",     "ZlothYNametag.Resources.dev.png" },
             { "GOLDEN",  "ZlothYNametag.Resources.golden.png" },
 
             // Cheater icon (only detects cheats that set custom props like ShibaGT Genesis)
@@ -67,7 +66,6 @@ public class CosmeticIconTag : MonoBehaviour
     private const string hanSoloId = "A48744B93D9A3596";
     private const string grazeId   = "42D7D32651E93866";
     private const string arielId   = "C41A1A9055417A27";
-    private const string devId     = "E354E818871BD1D8";
 
     private readonly HashSet<string> cheaterProps =
     [
@@ -166,9 +164,6 @@ public class CosmeticIconTag : MonoBehaviour
         else if (axoPlayerIds.Contains(rig.creator.UserId))
             foundCosmetics.Add("AXO");
         
-        else if (devId == rig.creator.UserId)
-            foundCosmetics.Add("DEV");
-        
         else if (goldenPlayerIds.Contains(rig.creator.UserId))
             foundCosmetics.Add("GOLDEN");
 
@@ -201,7 +196,7 @@ public class CosmeticIconTag : MonoBehaviour
         foreach (KeyValuePair<string, string> kvp in specialCosmetics)
         {
             //Ignore the other stuff
-            if (kvp.Key is "ZLOTHY" or "HANSOLO" or "GRAZE" or "ARIEL" or "AXO" or "DEV" or "GOLDEN" or "CHEATER" or "PIRATE")
+            if (kvp.Key is "ZLOTHY" or "HANSOLO" or "GRAZE" or "ARIEL" or "AXO" or "GOLDEN" or "CHEATER" or "PIRATE")
                 continue;
 
             if (rig.concatStringOfCosmeticsAllowed.Contains(kvp.Key))
