@@ -23,22 +23,14 @@ public class FPSTag : MonoBehaviour
 
         int fps = rig.fps;
 
-        Color tagColour = Color.green;
-
-        if (fps < 49)
-            tagColour = Color.red;
-
-        else if (fps < 59)
-            tagColour = new Color(1f, 0.5f, 0f);
-
-        else if (fps < 89)
-            tagColour = Color.yellow;
-
-        else if (fps >= 120 && fps <= 255)
-            tagColour = Color.blue;
-
-        else
-            tagColour = Color.green;
+        Color tagColour = fps switch
+                          {
+                                  < 49              => Color.red,
+                                  < 59              => new Color(1f, 0.5f, 0f),
+                                  < 89              => Color.yellow,
+                                  >= 120 and <= 255 => Color.blue,
+                                  _                 => Color.green,
+                          };
 
         firstPersonTagText.text = fps.ToString();
         thirdPersonTagText.text = fps.ToString();

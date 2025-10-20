@@ -22,30 +22,14 @@ public class PlatformTag : MonoBehaviour
             rig = GetComponent<VRRig>();
 
         string platform = GetPlatform(rig);
-        Color  tagColour;
 
-        switch (platform)
-        {
-            case "STEAM":
-                tagColour = Color.magenta;
-
-                break;
-
-            case "PC":
-                tagColour = Color.yellow;
-
-                break;
-
-            case "QUEST?":
-                tagColour = Color.cyan;
-
-                break;
-
-            default:
-                tagColour = Color.white;
-
-                break;
-        }
+        Color tagColour = platform switch
+                          {
+                                  "STEAM"  => Color.magenta,
+                                  "PC"     => Color.yellow,
+                                  "QUEST?" => Color.cyan,
+                                  _        => Color.white
+                          };
 
         firstPersonTagText.text = platform;
         thirdPersonTagText.text = platform;
