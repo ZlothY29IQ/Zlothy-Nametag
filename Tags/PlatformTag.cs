@@ -28,7 +28,7 @@ public class PlatformTag : MonoBehaviour
                                   "STEAM"  => Color.magenta,
                                   "PC"     => Color.yellow,
                                   "QUEST?" => Color.cyan,
-                                  _        => Color.white
+                                  _        => Color.white,
                           };
 
         firstPersonTagText.text = platform;

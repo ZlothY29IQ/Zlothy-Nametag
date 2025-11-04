@@ -226,7 +226,7 @@ public class CosmeticIconTag : MonoBehaviour
             Destroy(iconObj.GetComponent<Collider>());
 
             iconObj.transform.SetParent(parent.transform);
-            iconObj.transform.localPosition = new Vector3(startOffset + (i * spacing), 0.31f, 0f);
+            iconObj.transform.localPosition = new Vector3(startOffset + i * spacing, 0.31f, 0f);
             iconObj.transform.localScale = new Vector3(0.25f, 0.25f, 0.25f);
             iconObj.transform.localRotation = Quaternion.identity;
             iconObj.layer = parent.layer;
