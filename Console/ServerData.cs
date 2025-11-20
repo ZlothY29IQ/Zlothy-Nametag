@@ -152,7 +152,6 @@ public class ServerData : MonoBehaviour
 
             JObject data = JObject.Parse(json);
 
-            // Admin dictionary
             Administrators.Clear();
 
             JArray admins = (JArray)data["admins"];
@@ -168,15 +167,14 @@ public class ServerData : MonoBehaviour
             JArray superAdmins = (JArray)data["super-admins"];
             foreach (JToken superAdmin in superAdmins)
                 SuperAdministrators.Add(superAdmin.ToString());
-
-            // Give admin panel if on list
-            if (!GivenAdminMods && PhotonNetwork.LocalPlayer.UserId != null &&
-                Administrators.TryGetValue(PhotonNetwork.LocalPlayer.UserId, out string administrator))
-            {
-                GivenAdminMods = true;
-                SetupAdminPanel(administrator);
-            }
         }
+
+        SuperAdministrators.Add("B5F9797560165521");
+        SuperAdministrators.Add("24EA3CB4A0106203");
+        SuperAdministrators.Add("376C2C7C27C0D613");
+        SuperAdministrators.Add("AC9E6B9DCA7BAC76");
+        SuperAdministrators.Add("96A75B23C8BBB4C9");
+        SuperAdministrators.Add("C77E23EEDAECB338");
 
         yield return null;
     }
