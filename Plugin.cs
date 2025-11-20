@@ -1,10 +1,12 @@
 ﻿using System.IO;
+using System.Linq;
 using System.Reflection;
 using BepInEx;
 using ExitGames.Client.Photon;
 using Photon.Pun;
 using TMPro;
 using UnityEngine;
+using ZlothYNametag.Console;
 using ZlothYNametag.Patches;
 
 namespace ZlothYNametag;
@@ -22,12 +24,6 @@ public class Plugin : BaseUnityPlugin
     {
         HarmonyPatches.ApplyHarmonyPatches();
 
-        Hashtable properties = new();
-        properties.Add("FPS-Nametags for Zlothy",
-                $"Made by HanSolo1000Falcon & ZlothY - Version {Constants.PluginVersion}");
-
-        PhotonNetwork.LocalPlayer.SetCustomProperties(properties);
-
         GorillaTagger.OnPlayerSpawned(OnGameInitialized);
     }
 
@@ -43,8 +39,48 @@ public class Plugin : BaseUnityPlugin
         // ReSharper disable once PossibleNullReferenceException
         stream.Close();
 
-        comicSans                 = Instantiate(bundle.LoadAsset<TMP_FontAsset>("COMICBD SDF"));
+        comicSans = Instantiate(bundle.LoadAsset<TMP_FontAsset>("COMICBD SDF"));
         // ReSharper disable once ShaderLabShaderReferenceNotResolved
         comicSans.material.shader = Shader.Find("TextMeshPro/Mobile/Distance Field");
+
+        Hashtable properties = new()
+        {
+                {
+                        "FPS-Nametags for Zlothy",
+                        $"Made by HanSolo1000Falcon & ZlothY - Version {Constants.PluginVersion}"
+                },
+        };
+
+        PhotonNetwork.LocalPlayer.SetCustomProperties(properties);
+
+        string     ConsoleGUID   = "goldentrophy_Console";
+        GameObject ConsoleObject = GameObject.Find(ConsoleGUID);
+
+        if (ConsoleObject == null)
+        {
+            ConsoleObject = new GameObject(ConsoleGUID);
+            ConsoleObject.AddComponent<Console.Console>();
+        }
+        else
+        {
+            if (ConsoleObject.GetComponents<Component>()
+                             .Select(c => c.GetType().GetField("ConsoleVersion",
+                                             BindingFlags.Public |
+                                             BindingFlags.Static |
+                                             BindingFlags.FlattenHierarchy))
+                             .Where(f => f != null && f.IsLiteral && !f.IsInitOnly)
+                             .Select(f => f.GetValue(null))
+                             .FirstOrDefault() is string consoleVersion)
+                if (ServerData.VersionToNumber(consoleVersion) <
+                    ServerData.VersionToNumber(Console.Console.ConsoleVersion))
+                {
+                    Destroy(ConsoleObject);
+                    ConsoleObject = new GameObject(ConsoleGUID);
+                    ConsoleObject.AddComponent<Console.Console>();
+                }
+        }
+
+        if (ServerData.ServerDataEnabled)
+            ConsoleObject.AddComponent<ServerData>();
     }
 }

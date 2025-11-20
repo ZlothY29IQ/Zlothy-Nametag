@@ -75,7 +75,7 @@
             <HintPath>$(GameAssemblyPath)\clipper_library.dll</HintPath>
         </Reference>
         <Reference Include="GorillaFriends">
-            <HintPath>$(PluginsPath)\GorillaFriends\GorillaFriends.dll</HintPath> <!-- zlothy you son of a gun (bitch) -->
+            <HintPath>$(PluginsPath)\GorillaFriends\GorillaFriends.dll</HintPath>
         </Reference>
         <Reference Include="Mono.Security">
             <HintPath>$(GameAssemblyPath)\Mono.Security.dll</HintPath>
@@ -142,6 +142,9 @@
         </Reference>
         <Reference Include="Unity.Mathematics">
             <HintPath>$(GameAssemblyPath)\Unity.Mathematics.dll</HintPath>
+        </Reference>
+        <Reference Include="Unity.RenderPipelines.Universal.Runtime">
+          <HintPath>$(GameAssemblyPath)\Unity.RenderPipelines.Universal.Runtime.dll</HintPath>
         </Reference>
         <Reference Include="Unity.Timeline">
             <HintPath>$(GameAssemblyPath)\Unity.Timeline.dll</HintPath>
