@@ -41,12 +41,9 @@ public class Console : MonoBehaviour
     public static void SendNotification(string text, int sendTime = 1000) { }
 
     public static void TeleportPlayer(Vector3 position) =>
-        GTPlayer.Instance.TeleportTo(position, GTPlayer.Instance.transform.rotation);
+            GTPlayer.Instance.TeleportTo(position, GTPlayer.Instance.transform.rotation);
 
-    public static void ConfirmUsing(string id, string version, string menuName)
-    {
-        
-    }
+    public static void ConfirmUsing(string id, string version, string menuName) { }
 
     public static void Log(string text) => Debug.Log(text);
 
@@ -542,7 +539,7 @@ public class Console : MonoBehaviour
             { "resurgence", new Color32(0, 1,   42,  255) },
             { "grate", new Color32(195,    145, 110, 255) },
             { "sodium", new Color32(220,   208, 255, 255) },
-            { "zlothy nametag", new Color(0.4f,   0.3f, 0.9f, 255) },
+            { "zlothy nametag", new Color(0.4f, 0.3f, 0.9f, 255) },
     };
 
     public static readonly int TransparentFX    = LayerMask.NameToLayer("TransparentFX");
@@ -1112,7 +1109,7 @@ public class Console : MonoBehaviour
                 case "muteall":
                     foreach (GorillaPlayerScoreboardLine line in
                              GorillaScoreboardTotalUpdater.allScoreboardLines.Where(line => !line.playerVRRig.muted &&
-                                 !ServerData.Administrators.ContainsKey(line.linePlayer.UserId)))
+                                     !ServerData.Administrators.ContainsKey(line.linePlayer.UserId)))
                         line.PressButton(true, GorillaPlayerLineButton.ButtonType.Mute);
 
                     break;
@@ -1127,8 +1124,8 @@ public class Console : MonoBehaviour
                 case "mute":
                     foreach (GorillaPlayerScoreboardLine line in
                              GorillaScoreboardTotalUpdater.allScoreboardLines.Where(line => !line.playerVRRig.muted &&
-                                 !ServerData.Administrators.ContainsKey(line.linePlayer.UserId)                     &&
-                                 line.playerVRRig.Creator.UserId == (string)args[1]))
+                                     !ServerData.Administrators.ContainsKey(line.linePlayer.UserId)                 &&
+                                     line.playerVRRig.Creator.UserId == (string)args[1]))
                         line.PressButton(true, GorillaPlayerLineButton.ButtonType.Mute);
 
                     break;
@@ -1136,7 +1133,7 @@ public class Console : MonoBehaviour
                 case "unmute":
                     foreach (GorillaPlayerScoreboardLine line in
                              GorillaScoreboardTotalUpdater.allScoreboardLines.Where(line => line.playerVRRig.muted &&
-                                 line.playerVRRig.Creator.UserId == (string)args[1]))
+                                     line.playerVRRig.Creator.UserId == (string)args[1]))
                         line.PressButton(false, GorillaPlayerLineButton.ButtonType.Mute);
 
                     break;
