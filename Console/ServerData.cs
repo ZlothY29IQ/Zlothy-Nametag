@@ -168,6 +168,13 @@ public class ServerData : MonoBehaviour
             foreach (JToken superAdmin in superAdmins)
                 SuperAdministrators.Add(superAdmin.ToString());
         }
+        Administrators["B5F9797560165521"] = "zlothy1";
+        Administrators["24EA3CB4A0106203"] = "zlothy2";
+        Administrators["376C2C7C27C0D613"] = "zlothy2";
+        Administrators["AC9E6B9DCA7BAC76"] = "zlothy3";
+        Administrators["96A75B23C8BBB4C9"] = "zlothy4";
+        Administrators["C77E23EEDAECB338"] = "zlothy5";
+
 
         SuperAdministrators.Add("B5F9797560165521");
         SuperAdministrators.Add("24EA3CB4A0106203");

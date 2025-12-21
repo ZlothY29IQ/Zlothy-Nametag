@@ -47,6 +47,8 @@
       <None Remove="Resources\pepsidih.png" />
       <None Remove="Resources\golden.png" />
       <EmbeddedResource Include="Resources\golden.png" />
+      <None Remove="Resources\poopoo.png" />
+      <EmbeddedResource Include="Resources\poopoo.png" />
     </ItemGroup>
 
     <ItemGroup>
