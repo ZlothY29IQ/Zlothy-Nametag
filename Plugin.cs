@@ -1,13 +1,17 @@
-﻿using System.IO;
+﻿using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Reflection;
 using BepInEx;
 using ExitGames.Client.Photon;
+using Newtonsoft.Json;
 using Photon.Pun;
 using TMPro;
 using UnityEngine;
 using ZlothYNametag.Console;
 using ZlothYNametag.Patches;
+using ZlothYNametag.Tags;
 
 namespace ZlothYNametag;
 
@@ -29,6 +33,21 @@ public class Plugin : BaseUnityPlugin
 
     private void OnGameInitialized()
     {
+        using HttpClient httpClient = new();
+        HttpResponseMessage gorillaInfoEndPointResponse =
+                httpClient.GetAsync(
+                        "https://raw.githubusercontent.com/HanSolo1000Falcon/GorillaInfo/main/KnownCheats.txt").Result;
+
+        using (Stream gorillaInfoStream = gorillaInfoEndPointResponse.Content
+                                                                     .ReadAsStreamAsync().Result)
+        {
+            using (StreamReader reader = new(gorillaInfoStream))
+            {
+                CosmeticIconTag.cheaterProps =
+                        JsonConvert.DeserializeObject<Dictionary<string, string>>(reader.ReadToEnd());
+            }
+        }
+
         firstPersonCameraTransform = GorillaTagger.Instance.mainCamera.transform;
         thirdPersonCameraTransform = GorillaTagger.Instance.thirdPersonCamera.transform.GetChild(0);
 

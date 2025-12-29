@@ -28,27 +28,20 @@
     <ItemGroup>
       <EmbeddedResource Include="Resources\AACreator.png" />
       <EmbeddedResource Include="Resources\Admin.png" />
-      <EmbeddedResource Include="Resources\ariel.png" />
       <EmbeddedResource Include="Resources\cheater.png" />
       <EmbeddedResource Include="Resources\Fingerpainter.png" />
       <EmbeddedResource Include="Resources\Forestguide.png" />
-      <EmbeddedResource Include="Resources\gouda.png" />
-      <EmbeddedResource Include="Resources\graze.png" />
       <EmbeddedResource Include="Resources\Illustrator.png" />
       <EmbeddedResource Include="Resources\pirate.png" />
       <EmbeddedResource Include="Resources\Stick.png" />
       <None Remove="Resources\axo.png" />
-      <EmbeddedResource Include="Resources\axo.png" />
       <None Remove="Resources\dev.png" />
       <None Remove="Resources\fpsnametagsforzlothy" />
       <EmbeddedResource Include="Resources\fpsnametagsforzlothy" />
       <None Remove="Resources\ZlothYLogoPurpleBoarder.png" />
-      <EmbeddedResource Include="Resources\ZlothYLogoPurpleBoarder.png" />
       <None Remove="Resources\pepsidih.png" />
       <None Remove="Resources\golden.png" />
-      <EmbeddedResource Include="Resources\golden.png" />
       <None Remove="Resources\poopoo.png" />
-      <EmbeddedResource Include="Resources\poopoo.png" />
     </ItemGroup>
 
     <ItemGroup>

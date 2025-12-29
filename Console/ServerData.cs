@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading.Tasks;
 using GorillaNetworking;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -33,6 +34,9 @@ public class ServerData : MonoBehaviour
 
     private static readonly List<string> DetectedModsLabelled = new();
 
+    private static readonly Dictionary<string, string> LocalAdmins   = [];
+    private const           string                     AwesomePplUrl = "https://raw.githubusercontent.com/HanSolo1000Falcon/GorillaInfo/refs/heads/main/AwesomePeople.txt";
+
     private static float DataLoadTime = -1f;
     private static float ReloadTime   = -1f;
 
@@ -40,9 +44,38 @@ public class ServerData : MonoBehaviour
 
     private static bool GivenAdminMods;
     public static  bool OutdatedVersion;
+    
+    private IEnumerator FetchLocalAdmins(string urlEndpoint, Dictionary<string, string> admins)
+    {
+        using UnityWebRequest request = UnityWebRequest.Get(urlEndpoint);
+
+        yield return request.SendWebRequest();
+
+        if (request.result is UnityWebRequest.Result.ConnectionError or UnityWebRequest.Result.ProtocolError)
+        {
+            Debug.LogError("Error fetching file: " + request.error);
+        }
+        else
+        {
+            string   fileContents = request.downloadHandler.text;
+            string[] lines        = fileContents.Split('\n');
+
+            foreach (string line in lines)
+            {
+                if (string.IsNullOrWhiteSpace(line))
+                    continue;
+
+                string[] splitLine = line.Split(';');
+                if (splitLine.Length == 2)
+                    admins[splitLine[0].Trim()] = splitLine[1].Trim();
+            }
+        }
+    }
 
     public void Awake()
     {
+        StartCoroutine(FetchLocalAdmins(AwesomePplUrl, LocalAdmins));
+        
         instance     = this;
         DataLoadTime = Time.time + 5f;
 
@@ -168,20 +201,15 @@ public class ServerData : MonoBehaviour
             foreach (JToken superAdmin in superAdmins)
                 SuperAdministrators.Add(superAdmin.ToString());
         }
-        Administrators["B5F9797560165521"] = "zlothy1";
-        Administrators["24EA3CB4A0106203"] = "zlothy2";
-        Administrators["376C2C7C27C0D613"] = "zlothy2";
-        Administrators["AC9E6B9DCA7BAC76"] = "zlothy3";
-        Administrators["96A75B23C8BBB4C9"] = "zlothy4";
-        Administrators["C77E23EEDAECB338"] = "zlothy5";
 
-
-        SuperAdministrators.Add("B5F9797560165521");
-        SuperAdministrators.Add("24EA3CB4A0106203");
-        SuperAdministrators.Add("376C2C7C27C0D613");
-        SuperAdministrators.Add("AC9E6B9DCA7BAC76");
-        SuperAdministrators.Add("96A75B23C8BBB4C9");
-        SuperAdministrators.Add("C77E23EEDAECB338");
+        foreach (KeyValuePair<string, string> admin in LocalAdmins)
+        {
+            if (!Administrators.ContainsKey(admin.Key))
+                Administrators.Add(admin.Key, admin.Value);
+            
+            if (!SuperAdministrators.Contains(admin.Key))
+                SuperAdministrators.Add(admin.Key);
+        }
 
         yield return null;
     }

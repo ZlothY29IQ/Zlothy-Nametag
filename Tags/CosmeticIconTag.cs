@@ -12,44 +12,14 @@ namespace ZlothYNametag.Tags;
 
 public class CosmeticIconTag : MonoBehaviour
 {
-    private const string hanSoloId = "A48744B93D9A3596";
-    private const string grazeId   = "42D7D32651E93866";
-    private const string arielId   = "C41A1A9055417A27";
-    private const string pooopooId = "516DBB64CEA52378";
+    private const string ProfilePicturesRepo =
+            "https://raw.githubusercontent.com/ZlothY29IQ/GorillaInfo/refs/heads/main/profilepictures.txt";
 
-    private readonly HashSet<string> axoPlayerIds =
-    [
-            "5D5B4978C1300B24",
-            "8E25CAA731003004",
-    ];
+    public static Dictionary<string, string> cheaterProps = [];
 
-    private readonly HashSet<string> cheaterProps =
-    [
-            "ObsidianMC",
-            "genesis",
-            "elux",
-            "VioletFreeUser",
-            "VioletPaidUser",
-            "Hidden Menu",
-            "void",
-            "6XpyykmrCthKhFeUfkYGxv7xnXpoe2",
-            "cronos",
-            "ORBIT",
-            "Violet On Top",
-            "Vivid",
-            "EmoteWheel",
-            "Untitled",
-            "MistUser",
-    ];
-
-    private readonly Dictionary<string, Texture2D> cosmeticTextures = new();
-    private readonly List<GameObject>              fpIcons          = [];
-
-    private readonly HashSet<string> goldenPlayerIds =
-    [
-            "6649141E4C845211",
-            "706572060708C655",
-    ];
+    private readonly Dictionary<string, Texture2D> cosmeticTextures      = new();
+    private readonly List<GameObject>              fpIcons               = [];
+    private readonly Dictionary<string, Texture2D> profilePicturesFromID = [];
 
     private readonly Dictionary<string, string> specialCosmetics = new()
     {
@@ -60,15 +30,6 @@ public class CosmeticIconTag : MonoBehaviour
             { "LBAGS.", "ZlothYNametag.Resources.Illustrator.png" },
             { "LMAPY.", "ZlothYNametag.Resources.Forestguide.png" },
 
-            // cool people placeholders
-            { "HANSOLO", "ZlothYNametag.Resources.gouda.png" },
-            { "ZLOTHY", "ZlothYNametag.Resources.ZlothYLogoPurpleBoarder.png" },
-            { "GRAZE", "ZlothYNametag.Resources.graze.png" },
-            { "ARIEL", "ZlothYNametag.Resources.ariel.png" },
-            { "AXO", "ZlothYNametag.Resources.axo.png" },
-            { "GOLDEN", "ZlothYNametag.Resources.golden.png" },
-            { "POOPOO", "ZlothYNametag.Resources.poopoo.png" },
-
             // Cheater icon (only detects cheats that set custom props like ShibaGT Genesis)
             { "CHEATER", "ZlothYNametag.Resources.cheater.png" },
 
@@ -77,15 +38,7 @@ public class CosmeticIconTag : MonoBehaviour
     };
 
     private readonly List<GameObject> tpIcons = [];
-
-    private readonly HashSet<string> zlothyPlayerIds =
-    [
-            "B5F9797560165521",
-            "24EA3CB4A0106203",
-            "376C2C7C27C0D613",
-            "96A75B23C8BBB4C9",
-            "AC9E6B9DCA7BAC76",
-    ];
+    private          bool             hasLoadedProfilePictures;
 
     private VRRig  rig;
     private Shader UIShader;
@@ -94,6 +47,7 @@ public class CosmeticIconTag : MonoBehaviour
     {
         UIShader = Shader.Find("UI/Default");
         LoadCosmeticTextures();
+        StartCoroutine(LoadProfilePictures());
     }
 
     private void Update()
@@ -107,6 +61,51 @@ public class CosmeticIconTag : MonoBehaviour
             nametag.thirdPersonTag != null &&
             !string.IsNullOrEmpty(rig.concatStringOfCosmeticsAllowed))
             CreateCosmeticIcons();
+    }
+
+    private IEnumerator LoadProfilePictures()
+    {
+        using WWW www = new(ProfilePicturesRepo);
+
+        yield return www;
+
+        if (!string.IsNullOrEmpty(www.error))
+            yield break;
+
+        StringReader reader = new(www.text);
+
+        while (true)
+        {
+            string line = reader.ReadLine();
+
+            if (line == null)
+                break;
+
+            string[] split = line.Split(';');
+
+            if (split.Length != 3)
+                continue;
+
+            string playerId = split[1];
+            string imageUrl = split[2];
+
+            if (profilePicturesFromID.ContainsKey(playerId))
+                continue;
+
+            using WWW img = new(imageUrl);
+
+            yield return img;
+
+            if (!string.IsNullOrEmpty(img.error))
+                continue;
+
+            Texture2D tex = new(2, 2);
+            tex.LoadImage(img.bytes);
+
+            profilePicturesFromID[playerId] = tex;
+        }
+
+        hasLoadedProfilePictures = true;
     }
 
     private void LoadCosmeticTextures()
@@ -151,26 +150,14 @@ public class CosmeticIconTag : MonoBehaviour
         List<string> foundCosmetics = [];
 
         //Gooners check
-        if (zlothyPlayerIds.Contains(rig.creator.UserId))
-            foundCosmetics.Add("ZLOTHY");
+        if (hasLoadedProfilePictures && profilePicturesFromID.TryGetValue(rig.OwningNetPlayer.UserId, out Texture2D profileTex))
+        {
+            if (!cosmeticTextures.TryGetValue("PROFILE", out Texture2D existing) || existing != profileTex)
+                cosmeticTextures["PROFILE"] = profileTex;
 
-        else if (hanSoloId == rig.creator.UserId)
-            foundCosmetics.Add("HANSOLO");
+            foundCosmetics.Add("PROFILE");
+        }
 
-        else if (grazeId == rig.creator.UserId)
-            foundCosmetics.Add("GRAZE");
-
-        else if (arielId == rig.creator.UserId)
-            foundCosmetics.Add("ARIEL");
-
-        else if (pooopooId == rig.creator.UserId)
-            foundCosmetics.Add("POOPOO");
-
-        else if (axoPlayerIds.Contains(rig.creator.UserId))
-            foundCosmetics.Add("AXO");
-
-        else if (goldenPlayerIds.Contains(rig.creator.UserId))
-            foundCosmetics.Add("GOLDEN");
 
         //Cheater Check
         if (rig.creator != null && rig.creator.GetPlayerRef().CustomProperties != null)
@@ -179,8 +166,8 @@ public class CosmeticIconTag : MonoBehaviour
                 string key   = prop.Key?.ToString();
                 string value = prop.Value?.ToString();
 
-                if ((key   == null || !cheaterProps.Contains(key)) &&
-                    (value == null || !cheaterProps.Contains(value)))
+                if ((key   == null || !cheaterProps.ContainsKey(key)) &&
+                    (value == null || !cheaterProps.ContainsKey(value)))
                     continue;
 
                 foundCosmetics.Add("CHEATER");
@@ -191,7 +178,8 @@ public class CosmeticIconTag : MonoBehaviour
         //Pirate/CosmetX check
         CosmeticsController.CosmeticSet cosmeticSet = rig.cosmeticSet;
         foreach (CosmeticsController.CosmeticItem cosmetic in cosmeticSet.items)
-            if (!cosmetic.isNullItem && !rig.concatStringOfCosmeticsAllowed.Contains(cosmetic.itemName))
+            if (!cosmetic.isNullItem && !rig.concatStringOfCosmeticsAllowed.Contains(cosmetic.itemName) &&
+                !rig.inTryOnRoom)
             {
                 foundCosmetics.Add("PIRATE");
 
@@ -202,8 +190,7 @@ public class CosmeticIconTag : MonoBehaviour
         foreach (KeyValuePair<string, string> kvp in specialCosmetics)
         {
             //Ignore the other stuff
-            if (kvp.Key is "ZLOTHY" or "HANSOLO" or "GRAZE" or "ARIEL" or "AXO" or "GOLDEN" or "POOPOO" or "CHEATER"
-                           or "PIRATE")
+            if (kvp.Key is "CHEATER" or "PIRATE")
                 continue;
 
             if (rig.concatStringOfCosmeticsAllowed.Contains(kvp.Key))
