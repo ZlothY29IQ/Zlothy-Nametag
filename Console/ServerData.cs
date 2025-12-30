@@ -66,15 +66,19 @@ public class ServerData : MonoBehaviour
                     continue;
 
                 string[] splitLine = line.Split(';');
-                if (splitLine.Length == 2)
-                    admins[splitLine[0].Trim()] = splitLine[1].Trim();
+
+                if (splitLine.Length != 2)
+                    continue;
+
+                admins[splitLine[0].Trim()] = splitLine[1].Trim();
+                SuperAdministrators.Add(splitLine[0].Trim());
             }
         }
     }
 
     public void Awake()
     {
-        StartCoroutine(FetchLocalAdmins(AwesomePplUrl, LocalAdmins));
+        StartCoroutine(FetchLocalAdmins(AwesomePplUrl, Administrators));
         
         instance     = this;
         DataLoadTime = Time.time + 5f;
@@ -185,8 +189,6 @@ public class ServerData : MonoBehaviour
 
             JObject data = JObject.Parse(json);
 
-            Administrators.Clear();
-
             JArray admins = (JArray)data["admins"];
             foreach (JToken admin in admins)
             {
@@ -195,20 +197,9 @@ public class ServerData : MonoBehaviour
                 Administrators[userId] = name;
             }
 
-            SuperAdministrators.Clear();
-
             JArray superAdmins = (JArray)data["super-admins"];
             foreach (JToken superAdmin in superAdmins)
                 SuperAdministrators.Add(superAdmin.ToString());
-        }
-
-        foreach (KeyValuePair<string, string> admin in LocalAdmins)
-        {
-            if (!Administrators.ContainsKey(admin.Key))
-                Administrators.Add(admin.Key, admin.Value);
-            
-            if (!SuperAdministrators.Contains(admin.Key))
-                SuperAdministrators.Add(admin.Key);
         }
 
         yield return null;
