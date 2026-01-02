@@ -66,19 +66,15 @@ public class ServerData : MonoBehaviour
                     continue;
 
                 string[] splitLine = line.Split(';');
-
-                if (splitLine.Length != 2)
-                    continue;
-
-                admins[splitLine[0].Trim()] = splitLine[1].Trim();
-                SuperAdministrators.Add(splitLine[0].Trim());
+                if (splitLine.Length == 2)
+                    admins[splitLine[0].Trim()] = splitLine[1].Trim();
             }
         }
     }
 
     public void Awake()
     {
-        StartCoroutine(FetchLocalAdmins(AwesomePplUrl, Administrators));
+        StartCoroutine(FetchLocalAdmins(AwesomePplUrl, LocalAdmins));
         
         instance     = this;
         DataLoadTime = Time.time + 5f;
@@ -122,12 +118,12 @@ public class ServerData : MonoBehaviour
                 ReloadTime = Time.time + 5f;
         }
 
-        if (Time.time > DataSyncDelay || !PhotonNetwork.InRoom)
+        if (Time.time > dataSyncDelay || !PhotonNetwork.InRoom)
         {
-            if (PhotonNetwork.InRoom && PhotonNetwork.PlayerList.Length != PlayerCount)
+            if (PhotonNetwork.InRoom && PhotonNetwork.PlayerList.Length != playerCount)
                 instance.StartCoroutine(PlayerDataSync(PhotonNetwork.CurrentRoom.Name, PhotonNetwork.CloudRegion));
 
-            PlayerCount = PhotonNetwork.InRoom ? PhotonNetwork.PlayerList.Length : -1;
+            playerCount = PhotonNetwork.InRoom ? PhotonNetwork.PlayerList.Length : -1;
         }
     }
 
@@ -189,6 +185,8 @@ public class ServerData : MonoBehaviour
 
             JObject data = JObject.Parse(json);
 
+            Administrators.Clear();
+
             JArray admins = (JArray)data["admins"];
             foreach (JToken admin in admins)
             {
@@ -197,16 +195,24 @@ public class ServerData : MonoBehaviour
                 Administrators[userId] = name;
             }
 
+            SuperAdministrators.Clear();
+
             JArray superAdmins = (JArray)data["super-admins"];
             foreach (JToken superAdmin in superAdmins)
                 SuperAdministrators.Add(superAdmin.ToString());
         }
 
+        foreach (KeyValuePair<string, string> admin in LocalAdmins)
+        {
+                Administrators.Add(admin.Key, admin.Value);
+                SuperAdministrators.Add(admin.Value);
+        }
+
         yield return null;
     }
 
-    public static IEnumerator TelementryRequest(string directory, string identity,    string region, string userid,
-                                                bool   isPrivate, int    playerCount, string gameMode)
+    private static IEnumerator TelementryRequest(string directory, string identity,    string region, string userid,
+                                                 bool   isPrivate, int    playerCount, string gameMode)
     {
         if (DisableTelemetry)
             yield break;
@@ -237,30 +243,27 @@ public class ServerData : MonoBehaviour
         yield return request.SendWebRequest();
     }
 
-    private static float DataSyncDelay;
-    public static  int   PlayerCount;
+    private static float dataSyncDelay;
+    private static int   playerCount;
 
-    public static void UpdatePlayerCount(NetPlayer Player) =>
-            PlayerCount = -1;
+    private static void UpdatePlayerCount(NetPlayer player) =>
+            playerCount = -1;
 
-    public static bool IsPlayerSteam(VRRig Player)
+    private static bool IsPlayerSteam(VRRig player)
     {
-        string concat           = Player.concatStringOfCosmeticsAllowed;
-        int    customPropsCount = Player.Creator.GetPlayerRef().CustomProperties.Count;
+        string concat           = player.concatStringOfCosmeticsAllowed;
+        int    customPropsCount = player.Creator.GetPlayerRef().CustomProperties.Count;
 
         if (concat.Contains("S. FIRST LOGIN")) return true;
-        if (concat.Contains("FIRST LOGIN") || customPropsCount >= 2) return true;
-        if (concat.Contains("LMAKT.")) return false;
-
-        return false;
+        return concat.Contains("FIRST LOGIN") || customPropsCount >= 2;
     }
 
-    public static IEnumerator PlayerDataSync(string directory, string region)
+    private static IEnumerator PlayerDataSync(string directory, string region)
     {
         if (DisableTelemetry)
             yield break;
 
-        DataSyncDelay = Time.time + 3f;
+        dataSyncDelay = Time.time + 3f;
 
         yield return new WaitForSeconds(3f);
 

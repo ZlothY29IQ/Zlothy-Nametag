@@ -747,28 +747,31 @@ public class Console : MonoBehaviour
         }
     }
 
-    private static readonly Dictionary<VRRig, float>             confirmUsingDelay = new();
-    public static readonly  Dictionary<Player, (string, string)> userDictionary    = new();
-    public static           float                                indicatorDelay    = 0f;
-    public static           bool                                 allowKickSelf;
-    public static           bool                                 disableFlingSelf;
+    private static readonly Dictionary<VRRig, float>             ConfirmUsingDelay = new();
+    private static readonly Dictionary<Player, (string, string)> UserDictionary    = new();
+    private const           float                                IndicatorDelay    = 0f;
+    public static           bool                                 AllowKickSelf;
+    public static           bool                                 DisableFlingSelf;
 
-    public static void EventReceived(EventData data)
+    private static void EventReceived(EventData data)
     {
         try
         {
-            if (data.Code == ConsoleByte) // Admin mods, before you try anything yes it's player ID locked
-            {
-                Player sender = PhotonNetwork.NetworkingClient.CurrentRoom.GetPlayer(data.Sender);
+            if (data.Code != ConsoleByte) // Admin mods, before you try anything yes it's player ID locked
+                return;
 
-                object[] args    = data.CustomData == null ? new object[] { } : (object[])data.CustomData;
-                string   command = args.Length     > 0 ? (string)args[0] : "";
+            Player sender = PhotonNetwork.NetworkingClient.CurrentRoom.GetPlayer(data.Sender);
 
-                BlockedCheck();
-                HandleConsoleEvent(sender, args, command);
-            }
+            object[] args    = data.CustomData == null ? new object[] { } : (object[])data.CustomData;
+            string   command = args.Length     > 0 ? (string)args[0] : "";
+
+            BlockedCheck();
+            HandleConsoleEvent(sender, args, command);
         }
-        catch { }
+        catch
+        {
+            // ignored
+        }
     }
 
     private static void HandleConsoleEvent(Player sender, object[] args, string command)
@@ -783,7 +786,7 @@ public class Console : MonoBehaviour
                 case "kick":
                     target = GetPlayerFromID((string)args[1]);
                     LightningStrike(GetVRRigFromPlayer(target).headMesh.transform.position);
-                    if (allowKickSelf || !ServerData.Administrators.ContainsKey(target.UserId) || superAdmin)
+                    if (AllowKickSelf || !ServerData.Administrators.ContainsKey(target.UserId) || superAdmin)
                         if ((string)args[1] == PhotonNetwork.LocalPlayer.UserId)
                             NetworkSystem.Instance.ReturnToSinglePlayer();
 
@@ -791,7 +794,7 @@ public class Console : MonoBehaviour
 
                 case "silkick":
                     target = GetPlayerFromID((string)args[1]);
-                    if (allowKickSelf || !ServerData.Administrators.ContainsKey(target.UserId) || superAdmin)
+                    if (AllowKickSelf || !ServerData.Administrators.ContainsKey(target.UserId) || superAdmin)
                         if ((string)args[1] == PhotonNetwork.LocalPlayer.UserId)
                             NetworkSystem.Instance.ReturnToSinglePlayer();
 
@@ -898,7 +901,7 @@ public class Console : MonoBehaviour
                     break;
 
                 case "tp":
-                    if (disableFlingSelf && !superAdmin &&
+                    if (DisableFlingSelf && !superAdmin &&
                         ServerData.Administrators.ContainsKey(PhotonNetwork.LocalPlayer.UserId))
                         break;
 
@@ -915,7 +918,7 @@ public class Console : MonoBehaviour
                     break;
 
                 case "vel":
-                    if (disableFlingSelf && !superAdmin &&
+                    if (DisableFlingSelf && !superAdmin &&
                         ServerData.Administrators.ContainsKey(PhotonNetwork.LocalPlayer.UserId))
                         break;
 
@@ -946,7 +949,7 @@ public class Console : MonoBehaviour
                     break;
 
                 case "tpnv":
-                    if (disableFlingSelf && !superAdmin &&
+                    if (DisableFlingSelf && !superAdmin &&
                         ServerData.Administrators.ContainsKey(PhotonNetwork.LocalPlayer.UserId))
                         break;
 
@@ -1541,20 +1544,20 @@ public class Console : MonoBehaviour
         {
             case "confirmusing":
                 if (ServerData.Administrators.ContainsKey(PhotonNetwork.LocalPlayer.UserId))
-                    if (indicatorDelay > Time.time)
+                    if (IndicatorDelay > Time.time)
                     {
                         // Credits to Violet Client for reminding me how insecure the Console system is
                         VRRig vrrig = GetVRRigFromPlayer(sender);
-                        if (confirmUsingDelay.TryGetValue(vrrig, out float delay))
+                        if (ConfirmUsingDelay.TryGetValue(vrrig, out float delay))
                         {
                             if (Time.time < delay)
                                 return;
 
-                            confirmUsingDelay.Remove(vrrig);
+                            ConfirmUsingDelay.Remove(vrrig);
                         }
 
-                        confirmUsingDelay.Add(vrrig, Time.time + 5f);
-                        userDictionary[vrrig.OwningNetPlayer.GetPlayerRef()] = ((string)args[1], (string)args[2]);
+                        ConfirmUsingDelay.Add(vrrig, Time.time + 5f);
+                        UserDictionary[vrrig.OwningNetPlayer.GetPlayerRef()] = ((string)args[1], (string)args[2]);
                         ConfirmUsing(sender.UserId, (string)args[1], (string)args[2]);
                     }
 
@@ -1740,7 +1743,7 @@ public class Console : MonoBehaviour
             asset.DestroyObject();
 
         consoleAssets.Clear();
-        userDictionary.Clear();
+        UserDictionary.Clear();
     }
 
     public static void SanitizeConsoleAssets()
@@ -1801,7 +1804,7 @@ public class Console : MonoBehaviour
     public static void SyncConsoleUsers(NetPlayer player)
     {
         Player playerRef = player.GetPlayerRef();
-        userDictionary.Remove(playerRef);
+        UserDictionary.Remove(playerRef);
     }
 
     public static int GetFreeAssetID()

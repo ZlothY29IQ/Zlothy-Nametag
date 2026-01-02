@@ -87,6 +87,6 @@ public class PlatformTag : MonoBehaviour
             rig.Creator.GetPlayerRef().CustomProperties.Count >= 2)
             return "PC";
 
-        return "QUEST?";
+        return "Standalone";
     }
 }
