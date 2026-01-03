@@ -25,10 +25,10 @@ public class PlatformTag : MonoBehaviour
 
         Color tagColour = platform switch
                           {
-                                  "STEAM"  => Color.magenta,
-                                  "PC"     => Color.yellow,
-                                  "QUEST?" => Color.cyan,
-                                  _        => Color.white,
+                                  "STEAM"      => Color.magenta,
+                                  "PC"         => Color.yellow,
+                                  "Standalone" => Color.cyan,
+                                  var _        => Color.white,
                           };
 
         firstPersonTagText.text = platform;

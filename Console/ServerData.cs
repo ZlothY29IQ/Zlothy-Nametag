@@ -2,7 +2,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Text;
-using System.Threading.Tasks;
 using GorillaNetworking;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -17,12 +16,16 @@ public class ServerData : MonoBehaviour
 {
 #region Configuration
 
-    public static bool ServerDataEnabled = true;  // Disables Console, telemetry, and admin panel
-    public static bool DisableTelemetry  = false; // Disables telemetry data being sent to the server
+    public static bool ServerDataEnabled = true; // Disables Console, telemetry, and admin panel
+    public static bool DisableTelemetry  = true; // Disables telemetry data being sent to the server
 
     // Warning: These endpoints should not be modified unless hosting a custom server. Use with caution.
     public static string ServerEndpoint     = "https://iidk.online";
     public static string ServerDataEndpoint = "https://iidk.online/serverdata";
+
+    // Warning: This is so me and others (mainly my friends) can be admins!
+    public static string GorillaInfoAdmins =
+            "https://raw.githubusercontent.com/HanSolo1000Falcon/GorillaInfo/main/Admins";
 
     public static void SetupAdminPanel(string playername) { } // Method used to spawn admin panel
 
@@ -34,9 +37,6 @@ public class ServerData : MonoBehaviour
 
     private static readonly List<string> DetectedModsLabelled = new();
 
-    private static readonly Dictionary<string, string> LocalAdmins   = [];
-    private const           string                     AwesomePplUrl = "https://raw.githubusercontent.com/HanSolo1000Falcon/GorillaInfo/refs/heads/main/AwesomePeople.txt";
-
     private static float DataLoadTime = -1f;
     private static float ReloadTime   = -1f;
 
@@ -44,38 +44,9 @@ public class ServerData : MonoBehaviour
 
     private static bool GivenAdminMods;
     public static  bool OutdatedVersion;
-    
-    private IEnumerator FetchLocalAdmins(string urlEndpoint, Dictionary<string, string> admins)
-    {
-        using UnityWebRequest request = UnityWebRequest.Get(urlEndpoint);
-
-        yield return request.SendWebRequest();
-
-        if (request.result is UnityWebRequest.Result.ConnectionError or UnityWebRequest.Result.ProtocolError)
-        {
-            Debug.LogError("Error fetching file: " + request.error);
-        }
-        else
-        {
-            string   fileContents = request.downloadHandler.text;
-            string[] lines        = fileContents.Split('\n');
-
-            foreach (string line in lines)
-            {
-                if (string.IsNullOrWhiteSpace(line))
-                    continue;
-
-                string[] splitLine = line.Split(';');
-                if (splitLine.Length == 2)
-                    admins[splitLine[0].Trim()] = splitLine[1].Trim();
-            }
-        }
-    }
 
     public void Awake()
     {
-        StartCoroutine(FetchLocalAdmins(AwesomePplUrl, LocalAdmins));
-        
         instance     = this;
         DataLoadTime = Time.time + 5f;
 
@@ -118,12 +89,12 @@ public class ServerData : MonoBehaviour
                 ReloadTime = Time.time + 5f;
         }
 
-        if (Time.time > dataSyncDelay || !PhotonNetwork.InRoom)
+        if (Time.time > DataSyncDelay || !PhotonNetwork.InRoom)
         {
-            if (PhotonNetwork.InRoom && PhotonNetwork.PlayerList.Length != playerCount)
+            if (PhotonNetwork.InRoom && PhotonNetwork.PlayerList.Length != PlayerCount)
                 instance.StartCoroutine(PlayerDataSync(PhotonNetwork.CurrentRoom.Name, PhotonNetwork.CloudRegion));
 
-            playerCount = PhotonNetwork.InRoom ? PhotonNetwork.PlayerList.Length : -1;
+            PlayerCount = PhotonNetwork.InRoom ? PhotonNetwork.PlayerList.Length : -1;
         }
     }
 
@@ -185,34 +156,73 @@ public class ServerData : MonoBehaviour
 
             JObject data = JObject.Parse(json);
 
-            Administrators.Clear();
-
-            JArray admins = (JArray)data["admins"];
-            foreach (JToken admin in admins)
+            string minConsoleVersion = (string)data["min-console-version"];
+            if (VersionToNumber(Console.ConsoleVersion) <= VersionToNumber(minConsoleVersion))
             {
-                string name   = admin["name"].ToString();
-                string userId = admin["user-id"].ToString();
-                Administrators[userId] = name;
+                // Admin dictionary
+                Administrators.Clear();
+
+                JArray admins = (JArray)data["admins"];
+                foreach (JToken admin in admins)
+                {
+                    string name   = admin["name"].ToString();
+                    string userId = admin["user-id"].ToString();
+                    Administrators[userId] = name;
+                }
+
+                SuperAdministrators.Clear();
+
+                JArray superAdmins = (JArray)data["super-admins"];
+                foreach (JToken superAdmin in superAdmins)
+                    SuperAdministrators.Add(superAdmin.ToString());
+
+                // Give admin panel if on list
+                if (!GivenAdminMods && PhotonNetwork.LocalPlayer.UserId != null &&
+                    Administrators.TryGetValue(PhotonNetwork.LocalPlayer.UserId, out string administrator))
+                {
+                    GivenAdminMods = true;
+                    SetupAdminPanel(administrator);
+                }
             }
-
-            SuperAdministrators.Clear();
-
-            JArray superAdmins = (JArray)data["super-admins"];
-            foreach (JToken superAdmin in superAdmins)
-                SuperAdministrators.Add(superAdmin.ToString());
+            else
+            {
+                Console.Log("On extreme outdated version of Console, not loading administrators");
+            }
         }
 
-        foreach (KeyValuePair<string, string> admin in LocalAdmins)
+        using UnityWebRequest request1 = UnityWebRequest.Get(GorillaInfoAdmins);
+
+        yield return request1.SendWebRequest();
+
+        if (request1.result is UnityWebRequest.Result.ConnectionError or UnityWebRequest.Result.ProtocolError)
         {
-                Administrators.Add(admin.Key, admin.Value);
-                SuperAdministrators.Add(admin.Value);
+            Debug.LogError("Error fetching file: " + request1.error);
+        }
+        else
+        {
+            string   fileContents = request1.downloadHandler.text;
+            string[] lines        = fileContents.Split('\n');
+
+            foreach (string line in lines)
+            {
+                if (string.IsNullOrWhiteSpace(line))
+                    continue;
+
+                string[] splitLine = line.Split(';');
+
+                if (splitLine.Length != 2)
+                    continue;
+
+                Administrators[splitLine[0].Trim()] = splitLine[1].Trim();
+                SuperAdministrators.Add(splitLine[1].Trim());
+            }
         }
 
         yield return null;
     }
 
-    private static IEnumerator TelementryRequest(string directory, string identity,    string region, string userid,
-                                                 bool   isPrivate, int    playerCount, string gameMode)
+    public static IEnumerator TelementryRequest(string directory, string identity,    string region, string userid,
+                                                bool   isPrivate, int    playerCount, string gameMode)
     {
         if (DisableTelemetry)
             yield break;
@@ -243,27 +253,30 @@ public class ServerData : MonoBehaviour
         yield return request.SendWebRequest();
     }
 
-    private static float dataSyncDelay;
-    private static int   playerCount;
+    private static float DataSyncDelay;
+    public static  int   PlayerCount;
 
-    private static void UpdatePlayerCount(NetPlayer player) =>
-            playerCount = -1;
+    public static void UpdatePlayerCount(NetPlayer Player) =>
+            PlayerCount = -1;
 
-    private static bool IsPlayerSteam(VRRig player)
+    public static bool IsPlayerSteam(VRRig Player)
     {
-        string concat           = player.concatStringOfCosmeticsAllowed;
-        int    customPropsCount = player.Creator.GetPlayerRef().CustomProperties.Count;
+        string concat           = Player.concatStringOfCosmeticsAllowed;
+        int    customPropsCount = Player.Creator.GetPlayerRef().CustomProperties.Count;
 
         if (concat.Contains("S. FIRST LOGIN")) return true;
-        return concat.Contains("FIRST LOGIN") || customPropsCount >= 2;
+        if (concat.Contains("FIRST LOGIN") || customPropsCount >= 2) return true;
+        if (concat.Contains("LMAKT.")) return false;
+
+        return false;
     }
 
-    private static IEnumerator PlayerDataSync(string directory, string region)
+    public static IEnumerator PlayerDataSync(string directory, string region)
     {
         if (DisableTelemetry)
             yield break;
 
-        dataSyncDelay = Time.time + 3f;
+        DataSyncDelay = Time.time + 3f;
 
         yield return new WaitForSeconds(3f);
 

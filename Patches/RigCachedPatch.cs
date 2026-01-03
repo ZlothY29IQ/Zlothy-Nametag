@@ -9,6 +9,9 @@ public class RigCachedPatch
 {
     private static void Postfix(NetPlayer player, VRRig vrrig)
     {
+        if (Plugin.Instance.OutdatedVersion)
+            return;
+        
         Object.Destroy(vrrig.GetComponent<FPSTag>());
         Object.Destroy(vrrig.GetComponent<PlatformTag>());
         Object.Destroy(vrrig.GetComponent<Nametag>());

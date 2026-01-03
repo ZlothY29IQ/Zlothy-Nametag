@@ -9,7 +9,7 @@ public class SetColourPatch
 {
     private static void Postfix(VRRig __instance, Color color)
     {
-        if (__instance.isLocal)
+        if (__instance.isLocal || Plugin.Instance.OutdatedVersion)
             return;
 
         __instance.GetOrAddComponent(out Nametag nametag);
