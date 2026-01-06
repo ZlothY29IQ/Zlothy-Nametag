@@ -105,39 +105,6 @@ public class Console : MonoBehaviour
         (GraphicsSettings.currentRenderPipeline as UniversalRenderPipelineAsset).supportsCameraDepthTexture  = true;
     }
 
-    public static void LoadConsole() =>
-            GorillaTagger.OnPlayerSpawned(LoadConsoleImmediately);
-
-    public static void LoadConsoleImmediately()
-    {
-        string     ConsoleGUID   = "goldentrophy_Console";
-        GameObject ConsoleObject = GameObject.Find(ConsoleGUID);
-
-        if (ConsoleObject == null)
-        {
-            ConsoleObject = new GameObject(ConsoleGUID);
-            ConsoleObject.AddComponent<Console>();
-        }
-        else
-        {
-            if (ConsoleObject.GetComponents<Component>()
-                             .Select(c => c.GetType().GetField("ConsoleVersion",
-                                             BindingFlags.Public |
-                                             BindingFlags.Static))
-                             .Select(f => f.GetValue(null))
-                             .FirstOrDefault() is string consoleVersion)
-                if (ServerData.VersionToNumber(consoleVersion) < ServerData.VersionToNumber(ConsoleVersion))
-                {
-                    Destroy(ConsoleObject);
-                    ConsoleObject = new GameObject(ConsoleGUID);
-                    ConsoleObject.AddComponent<Console>();
-                }
-        }
-
-        if (ServerData.ServerDataEnabled)
-            ConsoleObject.AddComponent<ServerData>();
-    }
-
     public void OnDisable() =>
             PhotonNetwork.NetworkingClient.EventReceived -= EventReceived;
 
