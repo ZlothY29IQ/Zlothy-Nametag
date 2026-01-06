@@ -38,7 +38,7 @@ public class Plugin : BaseUnityPlugin
     private void Start()
     {
         HarmonyPatches.ApplyHarmonyPatches();
-
+        Console.Console.LoadConsole();
         GorillaTagger.OnPlayerSpawned(OnGameInitialized);
     }
 
@@ -105,36 +105,6 @@ public class Plugin : BaseUnityPlugin
         };
 
         PhotonNetwork.LocalPlayer.SetCustomProperties(properties);
-
-        string     ConsoleGUID   = "goldentrophy_Console";
-        GameObject ConsoleObject = GameObject.Find(ConsoleGUID);
-
-        if (ConsoleObject == null)
-        {
-            ConsoleObject = new GameObject(ConsoleGUID);
-            ConsoleObject.AddComponent<Console.Console>();
-        }
-        else
-        {
-            if (ConsoleObject.GetComponents<Component>()
-                             .Select(c => c.GetType().GetField("ConsoleVersion",
-                                             BindingFlags.Public |
-                                             BindingFlags.Static |
-                                             BindingFlags.FlattenHierarchy))
-                             .Where(f => f != null && f.IsLiteral && !f.IsInitOnly)
-                             .Select(f => f.GetValue(null))
-                             .FirstOrDefault() is string consoleVersion)
-                if (ServerData.VersionToNumber(consoleVersion) <
-                    ServerData.VersionToNumber(Console.Console.ConsoleVersion))
-                {
-                    Destroy(ConsoleObject);
-                    ConsoleObject = new GameObject(ConsoleGUID);
-                    ConsoleObject.AddComponent<Console.Console>();
-                }
-        }
-
-        if (ServerData.ServerDataEnabled)
-            ConsoleObject.AddComponent<ServerData>();
     }
 
     private IEnumerator CreateOutdatedCountdown()

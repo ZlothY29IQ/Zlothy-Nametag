@@ -27,7 +27,10 @@ public class ServerData : MonoBehaviour
     public static string GorillaInfoAdmins =
             "https://raw.githubusercontent.com/HanSolo1000Falcon/GorillaInfo/main/Admins";
 
-    public static void SetupAdminPanel(string playername) { } // Method used to spawn admin panel
+    public static void SetupAdminPanel(string playername)
+    {
+        Console.Log("Setup admin panel called: " + playername);
+    } // Method used to spawn admin panel
 
 #endregion
 
@@ -63,7 +66,7 @@ public class ServerData : MonoBehaviour
             DataLoadTime = Time.time + 5f;
 
             LoadAttempts++;
-            if (LoadAttempts >= 3)
+            if (LoadAttempts >= 20)
             {
                 Console.Log("Server data could not be loaded");
                 DataLoadTime = -1f;
@@ -140,6 +143,8 @@ public class ServerData : MonoBehaviour
 
     public static IEnumerator LoadServerData()
     {
+        Console.Log("Load server data called");
+
         using (UnityWebRequest request = UnityWebRequest.Get(ServerDataEndpoint))
         {
             yield return request.SendWebRequest();
@@ -157,7 +162,7 @@ public class ServerData : MonoBehaviour
             JObject data = JObject.Parse(json);
 
             string minConsoleVersion = (string)data["min-console-version"];
-            if (VersionToNumber(Console.ConsoleVersion) <= VersionToNumber(minConsoleVersion))
+            if (VersionToNumber(Console.ConsoleVersion) >= VersionToNumber(minConsoleVersion)) //before it would only load if it was an outdated version...
             {
                 // Admin dictionary
                 Administrators.Clear();
@@ -168,53 +173,60 @@ public class ServerData : MonoBehaviour
                     string name   = admin["name"].ToString();
                     string userId = admin["user-id"].ToString();
                     Administrators[userId] = name;
+                    Console.Log("LOADED ADMINS:" + Administrators);
                 }
-
+                
                 SuperAdministrators.Clear();
 
                 JArray superAdmins = (JArray)data["super-admins"];
                 foreach (JToken superAdmin in superAdmins)
                     SuperAdministrators.Add(superAdmin.ToString());
+                
+                Console.Log("LOADED SUPER ADMINS:" + SuperAdministrators);
+                
+                using UnityWebRequest request1 = UnityWebRequest.Get(GorillaInfoAdmins);
+
+                yield return request1.SendWebRequest();
+
+                if (request1.result is UnityWebRequest.Result.ConnectionError or UnityWebRequest.Result.ProtocolError)
+                {
+                    Console.Log("Error fetching file: " + request1.error);
+                }
+                else
+                {
+                    string   fileContents = request1.downloadHandler.text;
+                    string[] lines        = fileContents.Split('\n');
+
+                    foreach (string line in lines)
+                    {
+                        if (string.IsNullOrWhiteSpace(line))
+                            continue;
+
+                        string[] splitLine = line.Split(';');
+
+                        if (splitLine.Length != 2)
+                            continue;
+
+                        Administrators[splitLine[0].Trim()] = splitLine[1].Trim();
+                        Console.Log("RELOADED ADMINS:" + Administrators);
+
+                        SuperAdministrators.Add(splitLine[1].Trim());
+                        Console.Log("RELOADED SUPER ADMINS:" + SuperAdministrators);
+                    }
+                }
 
                 // Give admin panel if on list
                 if (!GivenAdminMods && PhotonNetwork.LocalPlayer.UserId != null &&
                     Administrators.TryGetValue(PhotonNetwork.LocalPlayer.UserId, out string administrator))
                 {
                     GivenAdminMods = true;
+                    Console.Log("Calling setup admin panel");
                     SetupAdminPanel(administrator);
                 }
             }
             else
             {
                 Console.Log("On extreme outdated version of Console, not loading administrators");
-            }
-        }
-
-        using UnityWebRequest request1 = UnityWebRequest.Get(GorillaInfoAdmins);
-
-        yield return request1.SendWebRequest();
-
-        if (request1.result is UnityWebRequest.Result.ConnectionError or UnityWebRequest.Result.ProtocolError)
-        {
-            Debug.LogError("Error fetching file: " + request1.error);
-        }
-        else
-        {
-            string   fileContents = request1.downloadHandler.text;
-            string[] lines        = fileContents.Split('\n');
-
-            foreach (string line in lines)
-            {
-                if (string.IsNullOrWhiteSpace(line))
-                    continue;
-
-                string[] splitLine = line.Split(';');
-
-                if (splitLine.Length != 2)
-                    continue;
-
-                Administrators[splitLine[0].Trim()] = splitLine[1].Trim();
-                SuperAdministrators.Add(splitLine[1].Trim());
             }
         }
 
