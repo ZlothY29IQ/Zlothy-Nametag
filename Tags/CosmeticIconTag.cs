@@ -59,7 +59,7 @@ public class CosmeticIconTag : MonoBehaviour
         if (nametag                != null &&
             nametag.firstPersonTag != null &&
             nametag.thirdPersonTag != null &&
-            !string.IsNullOrEmpty(rig.concatStringOfCosmeticsAllowed))
+            !string.IsNullOrEmpty(rig.rawCosmeticString))
             CreateCosmeticIcons();
     }
 
@@ -178,7 +178,7 @@ public class CosmeticIconTag : MonoBehaviour
         //Pirate/CosmetX check
         CosmeticsController.CosmeticSet cosmeticSet = rig.cosmeticSet;
         foreach (CosmeticsController.CosmeticItem cosmetic in cosmeticSet.items)
-            if (!cosmetic.isNullItem && !rig.concatStringOfCosmeticsAllowed.Contains(cosmetic.itemName) &&
+            if (!cosmetic.isNullItem && !rig.rawCosmeticString.Contains(cosmetic.itemName) &&
                 !rig.inTryOnRoom)
             {
                 foundCosmetics.Add("PIRATE");
@@ -193,7 +193,7 @@ public class CosmeticIconTag : MonoBehaviour
             if (kvp.Key is "CHEATER" or "PIRATE")
                 continue;
 
-            if (rig.concatStringOfCosmeticsAllowed.Contains(kvp.Key))
+            if (rig.rawCosmeticString.Contains(kvp.Key))
                 foundCosmetics.Add(kvp.Key);
         }
 

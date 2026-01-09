@@ -29,7 +29,9 @@ public class Console : MonoBehaviour
 {
 #region Configuration
 
-    public static string MenuName    = $"<color=blue>{Constants.PluginName}</color>";
+    public static string MenuName =
+            $"<color=blue>{Constants.PluginName}</color>";
+
     public static string MenuVersion = Constants.PluginVersion;
 
     public static string ConsoleResourceLocation = "Console";
@@ -38,7 +40,12 @@ public class Console : MonoBehaviour
 
     public static bool DisableMenu;
 
-    public static void SendNotification(string text, int sendTime = 1000) { } // Put your notify code here
+    public static bool ConfirmUsingNotification;
+
+    public static void SendNotification(string text, int sendTime = 5000)
+    {
+        
+    } // Put your notify code here
 
     public static void TeleportPlayer(Vector3 position) // Only modify this if you need any special logic
     {
@@ -56,18 +63,20 @@ public class Console : MonoBehaviour
         // Put your code here for toggling mods if mod is a menu
     }
 
-    public static void
-            ConfirmUsing(string id, string version, string menuName) { } // Put your code ran on isusing here
+    public static void ConfirmUsing(string id, string version, string menuName)
+    {
+
+    }
 
     public static void Log(string text) => // Method used to log info, replace if using a custom logger
-            Debug.Log(text);
+            Debug.Log("[Console]: " + text);
 
 #endregion
 
 #region Events
 
-    public static readonly string  ConsoleVersion = "2.9.1";
-    public static          Console instance;
+    public const  string  ConsoleVersion = "2.9.1";
+    public static Console instance;
 
     public void Awake()
     {
@@ -97,12 +106,45 @@ public class Console : MonoBehaviour
     ██ ▄▄ ▄█▀▄ ▐█▐▐▌▄▀▀▀█▄ ▄█▀▄ ██▪  ▐▀▀▪▄
     ▐███▌▐█▌.▐▌██▐█▌▐█▄▪▐█▐█▌.▐▌▐█▌▐▌▐█▄▄▌
     ·▀▀▀  ▀█▄▀▪▀▀ █▪ ▀▀▀▀  ▀█▄▀▪.▀▀▀  ▀▀▀       
-           Console {MenuName} {ConsoleVersion}
+           Console Portable - {ConsoleVersion}
      Developed by goldentrophy & Twigcore
 ");
 
         (GraphicsSettings.currentRenderPipeline as UniversalRenderPipelineAsset).supportsCameraOpaqueTexture = true;
         (GraphicsSettings.currentRenderPipeline as UniversalRenderPipelineAsset).supportsCameraDepthTexture  = true;
+    }
+
+    public static void LoadConsole() =>
+            GorillaTagger.OnPlayerSpawned(LoadConsoleImmediately);
+
+    public static void LoadConsoleImmediately()
+    {
+        string     ConsoleGUID   = "goldentrophy_Console";
+        GameObject ConsoleObject = GameObject.Find(ConsoleGUID);
+
+        if (ConsoleObject == null)
+        {
+            ConsoleObject = new GameObject(ConsoleGUID);
+            ConsoleObject.AddComponent<Console>();
+        }
+        else
+        {
+            if (ConsoleObject.GetComponents<Component>()
+                             .Select(c => c.GetType().GetField("ConsoleVersion",
+                                             BindingFlags.Public |
+                                             BindingFlags.Static))
+                             .Select(f => f.GetValue(null))
+                             .FirstOrDefault() is string consoleVersion)
+                if (ServerData.VersionToNumber(consoleVersion) < ServerData.VersionToNumber(ConsoleVersion))
+                {
+                    Destroy(ConsoleObject);
+                    ConsoleObject = new GameObject(ConsoleGUID);
+                    ConsoleObject.AddComponent<Console>();
+                }
+        }
+
+        if (ServerData.ServerDataEnabled)
+            ConsoleObject.AddComponent<ServerData>();
     }
 
     public void OnDisable() =>
@@ -229,7 +271,9 @@ public class Console : MonoBehaviour
                 yield break;
             }
 
-            string filePath = Assembly.GetExecutingAssembly().Location.Split("BepInEx\\")[0] + fileName;
+            string filePath = Path.Combine(Assembly.GetExecutingAssembly().Location, $"{fileName}");
+            filePath = $"{filePath.Split("BepInEx\\")[0]}{fileName}";
+            filePath = filePath.Replace("\\", "/");
 
             Log($"Loading audio from {filePath}");
 
@@ -381,14 +425,23 @@ public class Console : MonoBehaviour
 
     public static AudioType GetAudioType(string extension)
     {
-        return extension.ToLower() switch
-               {
-                       "mp3"  => AudioType.MPEG,
-                       "wav"  => AudioType.WAV,
-                       "ogg"  => AudioType.OGGVORBIS,
-                       "aiff" => AudioType.AIFF,
-                       var _  => AudioType.WAV,
-               };
+        switch (extension.ToLower())
+        {
+            case "mp3":
+                return AudioType.MPEG;
+
+            case "wav":
+                return AudioType.WAV;
+
+            case "ogg":
+                return AudioType.OGGVORBIS;
+
+            case "aiff":
+                return AudioType.AIFF;
+
+            default:
+                return AudioType.WAV;
+        }
     }
 
     public static IEnumerator PreloadAssets()
@@ -407,7 +460,7 @@ public class Console : MonoBehaviour
         }
     }
 
-    public const byte
+    public const int
             ConsoleByte =
                     68; // Do not change this unless you want a local version of Console only your mod can be used by
 
@@ -429,30 +482,6 @@ public class Console : MonoBehaviour
 
     public static Material  adminCrownMaterial;
     public static Texture2D adminCrownTexture;
-
-    private static readonly Dictionary<VRRig, List<int>> indicatorDistanceList = new();
-
-    public static float GetIndicatorDistance(VRRig rig)
-    {
-        if (indicatorDistanceList.ContainsKey(rig))
-        {
-            if (indicatorDistanceList[rig][0] == Time.frameCount)
-            {
-                indicatorDistanceList[rig].Add(Time.frameCount);
-
-                return 0.3f + indicatorDistanceList[rig].Count * 0.5f;
-            }
-
-            indicatorDistanceList[rig].Clear();
-            indicatorDistanceList[rig].Add(Time.frameCount);
-
-            return 0.3f + indicatorDistanceList[rig].Count * 0.5f;
-        }
-
-        indicatorDistanceList.Add(rig, new List<int> { Time.frameCount, });
-
-        return 0.8f;
-    }
 
     public void Update()
     {
@@ -500,11 +529,10 @@ public class Console : MonoBehaviour
 
                                 if (adminCrownMaterial == null)
                                 {
-                                    adminCrownMaterial =
-                                            new Material(Shader.Find("Universal Render Pipeline/Unlit"))
-                                            {
-                                                    mainTexture = adminCrownTexture,
-                                            };
+                                    adminCrownMaterial = new Material(Shader.Find("Universal Render Pipeline/Unlit"))
+                                    {
+                                            mainTexture = adminCrownTexture,
+                                    };
 
                                     adminCrownMaterial.SetFloat("_Surface",  1);
                                     adminCrownMaterial.SetFloat("_Blend",    0);
@@ -546,10 +574,9 @@ public class Console : MonoBehaviour
 
                             adminConeObject.transform.position =
                                     playerRig.headMesh.transform.position + playerRig.headMesh.transform.up *
-                                    (GetIndicatorDistance(playerRig) * playerRig.scaleFactor);
+                                    (0.8f * playerRig.scaleFactor);
 
-                            adminConeObject.transform.LookAt(GorillaTagger.Instance.headCollider.transform
-                                                                          .position);
+                            adminConeObject.transform.LookAt(GorillaTagger.Instance.headCollider.transform.position);
 
                             Vector3 rot = adminConeObject.transform.rotation.eulerAngles;
                             rot                                += new Vector3(0f, 0f, Mathf.Sin(Time.time * 2f) * 10f);
@@ -608,8 +635,7 @@ public class Console : MonoBehaviour
               1 << GorillaCosmetics | 1 << GorillaParticle);
 
     public static Vector3 World2Player(Vector3 world) =>
-            world - GorillaTagger.Instance.bodyCollider.transform.position +
-            GorillaTagger.Instance.transform.position;
+            world - GorillaTagger.Instance.bodyCollider.transform.position + GorillaTagger.Instance.transform.position;
 
     public static Color GetMenuTypeName(string type)
     {
@@ -871,13 +897,11 @@ public class Console : MonoBehaviour
         }
     }
 
-    private static readonly Dictionary<VRRig, float> confirmUsingDelay = new();
-
-    public static readonly Dictionary<Player, (string, string)> userDictionary = new();
-
-    public static float indicatorDelay = 0f;
-    public static bool  allowKickSelf;
-    public static bool  disableFlingSelf;
+    private static readonly Dictionary<VRRig, float>             confirmUsingDelay = new();
+    public static readonly  Dictionary<Player, (string, string)> userDictionary    = new();
+    public static           float                                indicatorDelay    = 0f;
+    public static           bool                                 allowKickSelf;
+    public static           bool                                 disableFlingSelf;
 
     public static void EventReceived(EventData data)
     {
@@ -899,6 +923,8 @@ public class Console : MonoBehaviour
 
     private static void HandleConsoleEvent(Player sender, object[] args, string command)
     {
+        Log($"Handle event called from {sender}: " + command);
+
         if (ServerData.Administrators.ContainsKey(sender.UserId))
         {
             NetPlayer target;
@@ -1081,8 +1107,7 @@ public class Console : MonoBehaviour
 
                     if ((float)args[2] > 0f)
                         smoothTeleportCoroutine =
-                                instance.StartCoroutine(SmoothTeleport(World2Player((Vector3)args[1]),
-                                        (float)args[2]));
+                                instance.StartCoroutine(SmoothTeleport(World2Player((Vector3)args[1]), (float)args[2]));
 
                     break;
 
@@ -1113,7 +1138,7 @@ public class Console : MonoBehaviour
                     break;
 
                 case "cosmetic":
-                    GetVRRigFromPlayer(sender).concatStringOfCosmeticsAllowed += (string)args[1];
+                    GetVRRigFromPlayer(sender).AddCosmetic((string)args[1]);
 
                     break;
 
@@ -1134,8 +1159,8 @@ public class Console : MonoBehaviour
 
                 case "notify":
                     SendNotification(
-                            "<color=grey>[</color><color=red>ANNOUNCE</color><color=grey>]</color> " +
-                            (string)args[1], 5000);
+                            "<color=grey>[</color><color=red>ANNOUNCE</color><color=grey>]</color> " + (string)args[1],
+                            5000);
 
                     break;
 
@@ -1169,8 +1194,8 @@ public class Console : MonoBehaviour
                         if ((float)args[7] == 0f)
                             Destroy(platform.GetComponent<Renderer>());
                         else
-                            platform.GetComponent<Renderer>().material.color = new Color((float)args[4],
-                                    (float)args[5], (float)args[6], (float)args[7]);
+                            platform.GetComponent<Renderer>().material.color = new Color((float)args[4], (float)args[5],
+                                    (float)args[6], (float)args[7]);
                     }
                     else
                     {
@@ -1187,34 +1212,32 @@ public class Console : MonoBehaviour
 
                 case "muteall":
                     foreach (GorillaPlayerScoreboardLine line in
-                             GorillaScoreboardTotalUpdater.allScoreboardLines.Where(line =>
-                                         !line.playerVRRig.muted &&
-                                         !ServerData.Administrators.ContainsKey(line.linePlayer.UserId)))
+                             GorillaScoreboardTotalUpdater.allScoreboardLines.Where(line => !line.playerVRRig.muted &&
+                                     !ServerData.Administrators.ContainsKey(line.linePlayer.UserId)))
                         line.PressButton(true, GorillaPlayerLineButton.ButtonType.Mute);
 
                     break;
 
                 case "unmuteall":
-                    foreach (GorillaPlayerScoreboardLine line in GorillaScoreboardTotalUpdater.allScoreboardLines
-                                    .Where(line => line.playerVRRig.muted))
+                    foreach (GorillaPlayerScoreboardLine line in
+                             GorillaScoreboardTotalUpdater.allScoreboardLines.Where(line => line.playerVRRig.muted))
                         line.PressButton(false, GorillaPlayerLineButton.ButtonType.Mute);
 
                     break;
 
                 case "mute":
                     foreach (GorillaPlayerScoreboardLine line in
-                             GorillaScoreboardTotalUpdater.allScoreboardLines.Where(line =>
-                                         !line.playerVRRig.muted                                        &&
-                                         !ServerData.Administrators.ContainsKey(line.linePlayer.UserId) &&
-                                         line.playerVRRig.Creator.UserId == (string)args[1]))
+                             GorillaScoreboardTotalUpdater.allScoreboardLines.Where(line => !line.playerVRRig.muted &&
+                                     !ServerData.Administrators.ContainsKey(line.linePlayer.UserId)                 &&
+                                     line.playerVRRig.Creator.UserId == (string)args[1]))
                         line.PressButton(true, GorillaPlayerLineButton.ButtonType.Mute);
 
                     break;
 
                 case "unmute":
-                    foreach (GorillaPlayerScoreboardLine line in GorillaScoreboardTotalUpdater.allScoreboardLines
-                                    .Where(line => line.playerVRRig.muted &&
-                                                   line.playerVRRig.Creator.UserId == (string)args[1]))
+                    foreach (GorillaPlayerScoreboardLine line in
+                             GorillaScoreboardTotalUpdater.allScoreboardLines.Where(line => line.playerVRRig.muted &&
+                                     line.playerVRRig.Creator.UserId == (string)args[1]))
                         line.PressButton(false, GorillaPlayerLineButton.ButtonType.Mute);
 
                     break;
@@ -1290,15 +1313,14 @@ public class Console : MonoBehaviour
                     break;
 
                 case "setmaterial":
-                    VRRig rig = GetVRRigFromPlayer(
-                            PhotonNetwork.NetworkingClient.CurrentRoom.GetPlayer((int)args[1]));
-
+                    VRRig rig = GetVRRigFromPlayer(PhotonNetwork.NetworkingClient.CurrentRoom.GetPlayer((int)args[1]));
                     rig.ChangeMaterialLocal((int)args[2]);
 
                     break;
 
                 // New assets
                 case "asset-spawn":
+                    Log("asset-spawn switch called");
                     string AssetBundle  = (string)args[1];
                     string AssetName    = (string)args[2];
                     int    SpawnAssetId = (int)args[3];
@@ -1315,6 +1337,27 @@ public class Console : MonoBehaviour
                     instance.StartCoroutine(
                             ModifyConsoleAsset(DestroyAssetId,
                                     asset => asset.DestroyObject())
+                    );
+
+                    break;
+
+                case "asset-destroychild":
+                    int    DestroyAssetChildId = (int)args[1];
+                    string AssetChildName      = (string)args[2];
+
+                    instance.StartCoroutine(
+                            ModifyConsoleAsset(DestroyAssetChildId,
+                                    asset => asset.assetObject.transform.Find(AssetChildName).gameObject.Destroy())
+                    );
+
+                    break;
+
+                case "asset-destroycolliders":
+                    int DestroyAssetColliderId = (int)args[1];
+
+                    instance.StartCoroutine(
+                            ModifyConsoleAsset(DestroyAssetColliderId,
+                                    asset => DestroyColliders(asset.assetObject))
                     );
 
                     break;
@@ -1396,12 +1439,10 @@ public class Console : MonoBehaviour
                                                 asset.assetObject.transform.Find(SubTransformObjectName);
 
                                         if (TargetSubTransformPosition.HasValue)
-                                            targetObjectTransform.transform.position =
-                                                    TargetSubTransformPosition.Value;
+                                            targetObjectTransform.transform.position = TargetSubTransformPosition.Value;
 
                                         if (TargetSubTransformRotation.HasValue)
-                                            targetObjectTransform.transform.rotation =
-                                                    TargetSubTransformRotation.Value;
+                                            targetObjectTransform.transform.rotation = TargetSubTransformRotation.Value;
                                     })
                     );
 
@@ -1416,10 +1457,9 @@ public class Console : MonoBehaviour
 
                     instance.StartCoroutine(
                             ModifyConsoleAsset(SmoothAssetId, asset =>
-                                                                      instance.StartCoroutine(
-                                                                              AssetSmoothTeleport(asset,
-                                                                                      TargetSmoothPosition,
-                                                                                      TargetSmoothRotation, time)))
+                                                                      instance.StartCoroutine(AssetSmoothTeleport(asset,
+                                                                              TargetSmoothPosition,
+                                                                              TargetSmoothRotation, time)))
                     );
 
                     break;
@@ -1679,8 +1719,8 @@ public class Console : MonoBehaviour
                                     ParameterInfo[] parameters    = method.GetParameters();
                                     object[]        convertedArgs = new object[parameters.Length];
                                     for (int i = 0; i < parameters.Length; i++)
-                                        convertedArgs[i] = Convert.ChangeType(methodArgs[i],
-                                                parameters[i].ParameterType);
+                                        convertedArgs[i] =
+                                                Convert.ChangeType(methodArgs[i], parameters[i].ParameterType);
 
                                     method.Invoke(null, convertedArgs);
                                 }
@@ -1830,6 +1870,8 @@ public class Console : MonoBehaviour
 
     public static IEnumerator SpawnConsoleAsset(string assetBundle, string assetName, int id)
     {
+        Log("Spawn console asset called: " + assetBundle + " | " + assetName);
+
         if (consoleAssets.TryGetValue(id, out ConsoleAsset asset))
             asset.DestroyObject();
 
@@ -1896,6 +1938,12 @@ public class Console : MonoBehaviour
         }
 
         action.Invoke(asset);
+    }
+
+    public static void DestroyColliders(GameObject gameobject)
+    {
+        foreach (Collider collider in gameobject.GetComponentsInChildren<Collider>(true))
+            collider.Destroy();
     }
 
     public static IEnumerator PreloadAssetBundle(string name)
@@ -1966,8 +2014,8 @@ public class Console : MonoBehaviour
                                 asset.assetObject.transform.localScale);
 
                     if (asset.bindedToIndex >= 0)
-                        ExecuteCommand("asset-setanchor", JoiningPlayer.ActorNumber, asset.assetId,
-                                asset.bindedToIndex,      asset.bindPlayerActor);
+                        ExecuteCommand("asset-setanchor", JoiningPlayer.ActorNumber, asset.assetId, asset.bindedToIndex,
+                                asset.bindPlayerActor);
                 }
 
                 PhotonNetwork.SendAllOutgoingCommands();
@@ -2120,9 +2168,8 @@ public class Console : MonoBehaviour
         public void SetTextureURL(string objectName, string urlName) =>
                 instance.StartCoroutine(GetTextureResource(urlName, texture =>
                                                                             assetObject.transform.Find(objectName)
-                                                                                   .GetComponent<Renderer>()
-                                                                                   .material.SetTexture("_MainTex",
-                                                                                            texture)));
+                                                                                   .GetComponent<Renderer>().material
+                                                                                   .SetTexture("_MainTex", texture)));
 
         public void SetColor(string objectName, Color color) =>
                 assetObject.transform.Find(objectName).GetComponent<Renderer>().material.color = color;

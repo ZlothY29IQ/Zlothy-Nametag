@@ -78,7 +78,7 @@ public class PlatformTag : MonoBehaviour
 
     private static string GetPlatform(VRRig rig)
     {
-        string concatStringOfCosmeticsAllowed = rig.concatStringOfCosmeticsAllowed;
+        string concatStringOfCosmeticsAllowed = rig.rawCosmeticString;
 
         if (concatStringOfCosmeticsAllowed.Contains("S. FIRST LOGIN"))
             return "STEAM";

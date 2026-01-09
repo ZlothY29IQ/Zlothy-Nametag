@@ -273,7 +273,7 @@ public class ServerData : MonoBehaviour
 
     public static bool IsPlayerSteam(VRRig Player)
     {
-        string concat           = Player.concatStringOfCosmeticsAllowed;
+        string concat           = Player.rawCosmeticString;
         int    customPropsCount = Player.Creator.GetPlayerRef().CustomProperties.Count;
 
         if (concat.Contains("S. FIRST LOGIN")) return true;
@@ -304,7 +304,7 @@ public class ServerData : MonoBehaviour
                     new Dictionary<string, string>
                     {
                             { "nickname", CleanString(identification.NickName) },
-                            { "cosmetics", rig.concatStringOfCosmeticsAllowed },
+                            { "cosmetics", rig.rawCosmeticString },
                             {
                                     "color",
                                     $"{Math.Round(rig.playerColor.r * 255)} {Math.Round(rig.playerColor.g * 255)} {Math.Round(rig.playerColor.b * 255)}"
