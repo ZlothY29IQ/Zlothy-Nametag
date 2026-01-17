@@ -63,8 +63,8 @@ public class PlatformTag : MonoBehaviour
     {
         tagObj = new GameObject(name);
         tagObj.transform.SetParent(isThirdPerson
-                                           ? GetComponent<Nametag>().thirdPersonTag.transform
-                                           : GetComponent<Nametag>().firstPersonTag.transform);
+                                           ? GetComponent<Nametag>().ThirdPersonTag.transform
+                                           : GetComponent<Nametag>().FirstPersonTag.transform);
 
         tagObj.transform.localPosition = new Vector3(0f, -0.1f, 0f);
 

@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -57,8 +58,8 @@ public class CosmeticIconTag : MonoBehaviour
 
         Nametag nametag = GetComponent<Nametag>();
         if (nametag                != null &&
-            nametag.firstPersonTag != null &&
-            nametag.thirdPersonTag != null &&
+            nametag.FirstPersonTag != null &&
+            nametag.ThirdPersonTag != null &&
             !string.IsNullOrEmpty(rig.rawCosmeticString))
             CreateCosmeticIcons();
     }
@@ -177,39 +178,28 @@ public class CosmeticIconTag : MonoBehaviour
 
         //Pirate/CosmetX check
         CosmeticsController.CosmeticSet cosmeticSet = rig.cosmeticSet;
-        foreach (CosmeticsController.CosmeticItem cosmetic in cosmeticSet.items)
-            if (!cosmetic.isNullItem && !rig.rawCosmeticString.Contains(cosmetic.itemName) &&
-                !rig.inTryOnRoom)
-            {
-                foundCosmetics.Add("PIRATE");
-
-                break;
-            }
-
-        //Rare Cosmetic Check
-        foreach (KeyValuePair<string, string> kvp in specialCosmetics)
+        if (cosmeticSet.items.Any(cosmetic => !cosmetic.isNullItem && !rig.rawCosmeticString.Contains(cosmetic.itemName) &&
+                                              !rig.inTryOnRoom))
         {
-            //Ignore the other stuff
-            if (kvp.Key is "CHEATER" or "PIRATE")
-                continue;
-
-            if (rig.rawCosmeticString.Contains(kvp.Key))
-                foundCosmetics.Add(kvp.Key);
+            foundCosmetics.Add("PIRATE");
         }
 
-        GameObject fpTag = GetComponent<Nametag>().firstPersonTag;
+        //Rare Cosmetic Check
+        foundCosmetics.AddRange(from kvp in specialCosmetics where kvp.Key is not ("CHEATER" or "PIRATE") where rig.rawCosmeticString.Contains(kvp.Key) select kvp.Key);
+
+        GameObject fpTag = GetComponent<Nametag>().FirstPersonTag;
         if (fpTag != null)
             CreateIconsForTag(fpTag, fpIcons, foundCosmetics);
 
-        GameObject tpTag = GetComponent<Nametag>().thirdPersonTag;
+        GameObject tpTag = GetComponent<Nametag>().ThirdPersonTag;
         if (tpTag != null)
             CreateIconsForTag(tpTag, tpIcons, foundCosmetics);
     }
 
     private void CreateIconsForTag(GameObject parent, List<GameObject> iconList, List<string> cosmeticKeys)
     {
-        float spacing     = 0.25f;
-        float startOffset = -((cosmeticKeys.Count - 1) * spacing) / 2f;
+        const float spacing     = 0.25f;
+        float       startOffset = -((cosmeticKeys.Count - 1) * spacing) / 2f;
 
         for (int i = 0; i < cosmeticKeys.Count; i++)
         {

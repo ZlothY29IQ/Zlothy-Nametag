@@ -1,7 +1,7 @@
 # Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International Public License
 (CC BY-NC-ND 4.0)
 
-Copyright © [2025] [ZlothY29IQ & HanSolo1000Falcon]
+Copyright © [2026] [ZlothY29IQ & HanSolo1000Falcon]
 
 ---
 

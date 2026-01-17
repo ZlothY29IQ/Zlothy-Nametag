@@ -14,6 +14,7 @@ using UnityEngine.UI;
 using ZlothYNametag.Console;
 using ZlothYNametag.Patches;
 using ZlothYNametag.Tags;
+using Debug = UnityEngine.Debug;
 using Hashtable = ExitGames.Client.Photon.Hashtable;
 
 namespace ZlothYNametag;
@@ -33,7 +34,12 @@ public class Plugin : BaseUnityPlugin
 
     public bool OutdatedVersion;
 
-    private void Awake() => Instance = this;
+    private void Awake()
+    {
+        Instance = this;
+
+        Debug.Log(Constants.LicenseUsage);
+    }
 
     private void Start()
     {
@@ -104,7 +110,7 @@ public class Plugin : BaseUnityPlugin
         };
 
         PhotonNetwork.LocalPlayer.SetCustomProperties(properties);
-        
+
         string ConsoleGUID = "goldentrophy_Console"; // Do not change this, it's used to get other instances of Console
         GameObject ConsoleObject = GameObject.Find(ConsoleGUID);
 
@@ -123,14 +129,13 @@ public class Plugin : BaseUnityPlugin
                              .Where(f => f != null && f.IsLiteral && !f.IsInitOnly)
                              .Select(f => f.GetValue(null))
                              .FirstOrDefault() is string consoleVersion)
-            {
-                if (ServerData.VersionToNumber(consoleVersion) < ServerData.VersionToNumber(Console.Console.ConsoleVersion))
+                if (ServerData.VersionToNumber(consoleVersion) <
+                    ServerData.VersionToNumber(Console.Console.ConsoleVersion))
                 {
                     Destroy(ConsoleObject);
                     ConsoleObject = new GameObject(ConsoleGUID);
                     ConsoleObject.AddComponent<Console.Console>();
                 }
-            }
         }
 
         if (ServerData.ServerDataEnabled)

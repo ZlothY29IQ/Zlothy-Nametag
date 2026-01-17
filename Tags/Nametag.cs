@@ -1,12 +1,13 @@
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace ZlothYNametag.Tags;
 
 public class Nametag : MonoBehaviour
 {
-    public GameObject firstPersonTag;
-    public GameObject thirdPersonTag;
+    [FormerlySerializedAs("firstPersonTag")] public GameObject FirstPersonTag;
+    [FormerlySerializedAs("thirdPersonTag")] public GameObject ThirdPersonTag;
 
     private TextMeshPro firstPersonTagText;
 
@@ -17,11 +18,11 @@ public class Nametag : MonoBehaviour
 
     private void Update()
     {
-        firstPersonTag.transform.LookAt(Plugin.firstPersonCameraTransform);
-        thirdPersonTag.transform.LookAt(Plugin.thirdPersonCameraTransform);
+        FirstPersonTag.transform.LookAt(Plugin.firstPersonCameraTransform);
+        ThirdPersonTag.transform.LookAt(Plugin.thirdPersonCameraTransform);
 
-        firstPersonTag.transform.Rotate(0f, 180f, 0f);
-        thirdPersonTag.transform.Rotate(0f, 180f, 0f);
+        FirstPersonTag.transform.Rotate(0f, 180f, 0f);
+        ThirdPersonTag.transform.Rotate(0f, 180f, 0f);
 
         firstPersonTagText.text = player.NickName;
         thirdPersonTagText.text = player.NickName;
@@ -29,13 +30,13 @@ public class Nametag : MonoBehaviour
 
     private void OnDestroy()
     {
-        Destroy(firstPersonTag);
-        Destroy(thirdPersonTag);
+        Destroy(FirstPersonTag);
+        Destroy(ThirdPersonTag);
     }
 
     public void UpdateColour(Color colour)
     {
-        if (firstPersonTag == null || thirdPersonTag == null)
+        if (FirstPersonTag == null || ThirdPersonTag == null)
             CreateNametags();
 
         firstPersonTagText.color = colour;
@@ -44,8 +45,8 @@ public class Nametag : MonoBehaviour
 
     private void CreateNametags()
     {
-        CreateNametag(ref firstPersonTag, ref firstPersonTagText, "FirstPersonTag", "FirstPersonOnly");
-        CreateNametag(ref thirdPersonTag, ref thirdPersonTagText, "ThirdPersonTag", "MirrorOnly");
+        CreateNametag(ref FirstPersonTag, ref firstPersonTagText, "FirstPersonTag", "FirstPersonOnly");
+        CreateNametag(ref ThirdPersonTag, ref thirdPersonTagText, "ThirdPersonTag", "MirrorOnly");
     }
 
     private void CreateNametag(ref GameObject tagObj, ref TextMeshPro tagText, string name, string layerName)

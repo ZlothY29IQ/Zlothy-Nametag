@@ -15,8 +15,8 @@ public class SetColourPatch
         __instance.GetOrAddComponent(out Nametag nametag);
         nametag.UpdateColour(color);
 
-        __instance.GetOrAddComponent<FPSTag>(out FPSTag _);
-        __instance.GetOrAddComponent<PlatformTag>(out PlatformTag _);
-        __instance.GetOrAddComponent<CosmeticIconTag>(out CosmeticIconTag _);
+        __instance.GetOrAddComponent(out FPSTag _);
+        __instance.GetOrAddComponent(out PlatformTag _);
+        __instance.GetOrAddComponent(out CosmeticIconTag _);
     }
 }

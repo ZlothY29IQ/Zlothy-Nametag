@@ -29,7 +29,7 @@ public class FPSTag : MonoBehaviour
                                   < 59              => new Color(1f, 0.5f, 0f),
                                   < 89              => Color.yellow,
                                   >= 120 and <= 255 => Color.blue,
-                                  _                 => Color.green,
+                                  var _             => Color.green,
                           };
 
         firstPersonTagText.text = fps.ToString();
@@ -64,8 +64,8 @@ public class FPSTag : MonoBehaviour
     {
         tagObj = new GameObject(name);
         tagObj.transform.SetParent(isThirdPerson
-                                           ? GetComponent<Nametag>().thirdPersonTag.transform
-                                           : GetComponent<Nametag>().firstPersonTag.transform);
+                                           ? GetComponent<Nametag>().ThirdPersonTag.transform
+                                           : GetComponent<Nametag>().FirstPersonTag.transform);
 
         tagObj.transform.localPosition = new Vector3(0f, 0.125f, 0f);
 
