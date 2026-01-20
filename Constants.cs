@@ -4,9 +4,11 @@ public class Constants
 {
     public const string PluginGuid    = "hansolo1000falcon.zlothy.zlothynametag";
     public const string PluginName    = "ZlothY Nametag";
-    public const string PluginVersion = "1.1.9";
+    public const string PluginVersion = "1.2.0";
 
     public const string LicenseUsage = """
+                                       License usage log from - [ZlothYNametag]
+                                       
                                        This mod is sublicensed from:
                                        https://github.com/HanSolo1000Falcon/FPS-Nametags-For-Zlothy
 
