@@ -6,8 +6,6 @@ using System.Linq;
 using System.Net.Http;
 using System.Reflection;
 using BepInEx;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Photon.Pun;
 using TMPro;
 using UnityEngine;
@@ -73,21 +71,9 @@ public class Plugin : BaseUnityPlugin
             }
         }
 
-        using HttpClient httpClient2 = new();
-        HttpResponseMessage response =
-                httpClient2.GetAsync(
-                        "https://data.hamburbur.org/").Result;
-
-        using (Stream hamburburDataStream = response.Content.ReadAsStreamAsync().Result)
-            using (StreamReader reader = new(hamburburDataStream))
-            {
-                JObject root = JObject.Parse(reader.ReadToEnd());
-
-                CosmeticIconTag.cheaterProps =
-                        root["Known Cheats"]?
-                               .ToObject<Dictionary<string, string>>();
-            }
-
+        CosmeticIconTag.cheaterProps =
+                DataHamburburOrg.Data["Known Cheats"]?
+                       .ToObject<Dictionary<string, string>>();
 
         firstPersonCameraTransform = GorillaTagger.Instance.mainCamera.transform;
         thirdPersonCameraTransform = GorillaTagger.Instance.thirdPersonCamera.transform.GetChild(0);

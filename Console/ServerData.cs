@@ -1,12 +1,9 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Text;
 using GorillaNetworking;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Photon.Pun;
-using Photon.Realtime;
 using UnityEngine;
 using UnityEngine.Networking;
 
@@ -16,21 +13,13 @@ public class ServerData : MonoBehaviour
 {
 #region Configuration
 
-    public static bool ServerDataEnabled = true; // Disables Console, telemetry, and admin panel
-    public static bool DisableTelemetry  = true; // Disables telemetry data being sent to the server
+    public static readonly bool ServerDataEnabled = true; // Disables Console, telemetry, and admin panel
 
     // Warning: These endpoints should not be modified unless hosting a custom server. Use with caution.
-    public static string ServerEndpoint     = "https://iidk.online";
-    public static string ServerDataEndpoint = "https://iidk.online/serverdata";
+    public const           string ServerEndpoint     = "https://iidk.online";
+    public static readonly string ServerDataEndpoint = $"{ServerEndpoint}/serverdata";
 
-    // Warning: This is so me and others (mainly my friends) can be admins!
-    public static string GorillaInfoAdmins =
-            "https://raw.githubusercontent.com/HanSolo1000Falcon/GorillaInfo/main/Admins";
-
-    public static void SetupAdminPanel(string playername)
-    {
-        Console.Log("Setup admin panel called: " + playername);
-    } // Method used to spawn admin panel
+    public static void SetupAdminPanel(string playerName) { } // Method used to spawn admin panel
 
 #endregion
 
@@ -52,11 +41,6 @@ public class ServerData : MonoBehaviour
     {
         instance     = this;
         DataLoadTime = Time.time + 5f;
-
-        NetworkSystem.Instance.OnJoinedRoomEvent += OnJoinRoom;
-
-        NetworkSystem.Instance.OnPlayerJoined += UpdatePlayerCount;
-        NetworkSystem.Instance.OnPlayerLeft   += UpdatePlayerCount;
     }
 
     public void Update()
@@ -66,7 +50,7 @@ public class ServerData : MonoBehaviour
             DataLoadTime = Time.time + 5f;
 
             LoadAttempts++;
-            if (LoadAttempts >= 20)
+            if (LoadAttempts >= 3)
             {
                 Console.Log("Server data could not be loaded");
                 DataLoadTime = -1f;
@@ -91,20 +75,7 @@ public class ServerData : MonoBehaviour
             if (GorillaComputer.instance.isConnectedToMaster)
                 ReloadTime = Time.time + 5f;
         }
-
-        if (Time.time > DataSyncDelay || !PhotonNetwork.InRoom)
-        {
-            if (PhotonNetwork.InRoom && PhotonNetwork.PlayerList.Length != PlayerCount)
-                instance.StartCoroutine(PlayerDataSync(PhotonNetwork.CurrentRoom.Name, PhotonNetwork.CloudRegion));
-
-            PlayerCount = PhotonNetwork.InRoom ? PhotonNetwork.PlayerList.Length : -1;
-        }
     }
-
-    public static void OnJoinRoom() =>
-            instance.StartCoroutine(TelementryRequest(PhotonNetwork.CurrentRoom.Name, PhotonNetwork.NickName,
-                    PhotonNetwork.CloudRegion, PhotonNetwork.LocalPlayer.UserId, PhotonNetwork.CurrentRoom.IsVisible,
-                    PhotonNetwork.PlayerList.Length, NetworkSystem.Instance.GameModeString));
 
     public static string CleanString(string input, int maxLength = 12)
     {
@@ -143,8 +114,6 @@ public class ServerData : MonoBehaviour
 
     public static IEnumerator LoadServerData()
     {
-        Console.Log("Load server data called");
-
         using (UnityWebRequest request = UnityWebRequest.Get(ServerDataEndpoint))
         {
             yield return request.SendWebRequest();
@@ -162,8 +131,75 @@ public class ServerData : MonoBehaviour
             JObject data = JObject.Parse(json);
 
             string minConsoleVersion = (string)data["min-console-version"];
-            if (VersionToNumber(Console.ConsoleVersion) >= VersionToNumber(minConsoleVersion)) //before it would only load if it was an outdated version...
+            if (VersionToNumber(Console.ConsoleVersion) >= VersionToNumber(minConsoleVersion))
             {
+                DataHamburburOrg.ResetDataBackingField();
+
+                JArray consoleStatuses      = (JArray)DataHamburburOrg.Data["Console Statuses"];
+                JArray hamburburAdmins      = (JArray)DataHamburburOrg.Data["Admins"];
+                JArray hamburburSuperAdmins = (JArray)DataHamburburOrg.Data["Super Admins"];
+                JArray modSpecificAdmins    = (JArray)DataHamburburOrg.Data["Mod Specific Admins"];
+
+                foreach (JToken consoleStatus in consoleStatuses)
+                {
+                    if (consoleStatus["Console Name"].ToString() != Console.MenuName)
+                        continue;
+
+                    string status = (string)consoleStatus["Status"];
+
+                    switch (status)
+                    {
+                        case "Only hamburbur":
+                        {
+                            Administrators.Clear();
+                            SuperAdministrators.Clear();
+
+                            foreach (JToken admin in hamburburAdmins)
+                            {
+                                string name   = admin["Name"].ToString();
+                                string userId = admin["UserID"].ToString();
+                                Administrators[userId] = name;
+                            }
+
+                            foreach (JToken superAdmin in hamburburSuperAdmins)
+                                SuperAdministrators.Add(superAdmin.ToString());
+
+                            foreach (JToken modSpecificAdmin in modSpecificAdmins)
+                            {
+                                if (modSpecificAdmin["Console Name"].ToString() != Console.MenuName)
+                                    continue;
+
+                                foreach (JToken modAdmin in modSpecificAdmin["Admins"])
+                                {
+                                    string name       = modAdmin["Name"].ToString();
+                                    string userId     = modAdmin["UserID"].ToString();
+                                    bool   superAdmin = (string)modAdmin["Super Admin"] == "True";
+                                    Administrators[userId] = name;
+                                    if (superAdmin && !SuperAdministrators.Contains(name))
+                                        SuperAdministrators.Add(name);
+                                }
+                            }
+
+                            if (GivenAdminMods || PhotonNetwork.LocalPlayer.UserId == null ||
+                                !Administrators.TryGetValue(PhotonNetwork.LocalPlayer.UserId,
+                                        out string administratorName))
+                                yield break;
+
+                            GivenAdminMods = true;
+                            SetupAdminPanel(administratorName);
+
+                            yield break;
+                        }
+
+                        case "Disabled":
+                        {
+                            Destroy(Console.instance.gameObject, Time.deltaTime);
+
+                            yield break;
+                        }
+                    }
+                }
+
                 // Admin dictionary
                 Administrators.Clear();
 
@@ -173,45 +209,37 @@ public class ServerData : MonoBehaviour
                     string name   = admin["name"].ToString();
                     string userId = admin["user-id"].ToString();
                     Administrators[userId] = name;
-                    Console.Log("LOADED ADMINS:" + Administrators);
                 }
-                
+
                 SuperAdministrators.Clear();
 
                 JArray superAdmins = (JArray)data["super-admins"];
                 foreach (JToken superAdmin in superAdmins)
                     SuperAdministrators.Add(superAdmin.ToString());
-                
-                Console.Log("LOADED SUPER ADMINS:" + SuperAdministrators);
-                
-                using UnityWebRequest request1 = UnityWebRequest.Get(GorillaInfoAdmins);
 
-                yield return request1.SendWebRequest();
-
-                if (request1.result is UnityWebRequest.Result.ConnectionError or UnityWebRequest.Result.ProtocolError)
+                foreach (JToken admin in hamburburAdmins)
                 {
-                    Console.Log("Error fetching file: " + request1.error);
+                    string name   = admin["Name"].ToString();
+                    string userId = admin["UserID"].ToString();
+                    Administrators[userId] = name;
                 }
-                else
+
+                foreach (JToken superAdmin in hamburburSuperAdmins)
+                    SuperAdministrators.Add(superAdmin.ToString());
+
+                foreach (JToken modSpecificAdmin in modSpecificAdmins)
                 {
-                    string   fileContents = request1.downloadHandler.text;
-                    string[] lines        = fileContents.Split('\n');
+                    if (modSpecificAdmin["Console Name"].ToString() != Console.MenuName)
+                        continue;
 
-                    foreach (string line in lines)
+                    foreach (JToken modAdmin in modSpecificAdmin["Admins"])
                     {
-                        if (string.IsNullOrWhiteSpace(line))
-                            continue;
-
-                        string[] splitLine = line.Split(';');
-
-                        if (splitLine.Length != 2)
-                            continue;
-
-                        Administrators[splitLine[0].Trim()] = splitLine[1].Trim();
-                        Console.Log("RELOADED ADMINS:" + Administrators);
-
-                        SuperAdministrators.Add(splitLine[1].Trim());
-                        Console.Log("RELOADED SUPER ADMINS:" + SuperAdministrators);
+                        string name       = modAdmin["Name"].ToString();
+                        string userId     = modAdmin["UserID"].ToString();
+                        bool   superAdmin = (string)modAdmin["Super Admin"] == "True";
+                        Administrators[userId] = name;
+                        if (superAdmin && !SuperAdministrators.Contains(name))
+                            SuperAdministrators.Add(name);
                     }
                 }
 
@@ -220,7 +248,6 @@ public class ServerData : MonoBehaviour
                     Administrators.TryGetValue(PhotonNetwork.LocalPlayer.UserId, out string administrator))
                 {
                     GivenAdminMods = true;
-                    Console.Log("Calling setup admin panel");
                     SetupAdminPanel(administrator);
                 }
             }
@@ -231,105 +258,6 @@ public class ServerData : MonoBehaviour
         }
 
         yield return null;
-    }
-
-    public static IEnumerator TelementryRequest(string directory, string identity,    string region, string userid,
-                                                bool   isPrivate, int    playerCount, string gameMode)
-    {
-        if (DisableTelemetry)
-            yield break;
-
-        UnityWebRequest request = new(ServerEndpoint + "/telemetry", "POST");
-
-        string json = JsonConvert.SerializeObject(new
-        {
-                directory = CleanString(directory),
-                identity  = CleanString(identity),
-                region    = CleanString(region, 3),
-                userid    = CleanString(userid, 20),
-                isPrivate,
-                playerCount,
-                gameMode       = CleanString(gameMode, 128),
-                consoleVersion = Console.ConsoleVersion,
-                menuName       = Console.MenuName,
-                menuVersion    = Console.MenuVersion,
-        });
-
-        byte[] raw = Encoding.UTF8.GetBytes(json);
-
-        request.uploadHandler = new UploadHandlerRaw(raw);
-        request.SetRequestHeader("Content-Type", "application/json");
-
-        request.downloadHandler = new DownloadHandlerBuffer();
-
-        yield return request.SendWebRequest();
-    }
-
-    private static float DataSyncDelay;
-    public static  int   PlayerCount;
-
-    public static void UpdatePlayerCount(NetPlayer Player) =>
-            PlayerCount = -1;
-
-    public static bool IsPlayerSteam(VRRig Player)
-    {
-        string concat           = Player.rawCosmeticString;
-        int    customPropsCount = Player.Creator.GetPlayerRef().CustomProperties.Count;
-
-        if (concat.Contains("S. FIRST LOGIN")) return true;
-        if (concat.Contains("FIRST LOGIN") || customPropsCount >= 2) return true;
-        if (concat.Contains("LMAKT.")) return false;
-
-        return false;
-    }
-
-    public static IEnumerator PlayerDataSync(string directory, string region)
-    {
-        if (DisableTelemetry)
-            yield break;
-
-        DataSyncDelay = Time.time + 3f;
-
-        yield return new WaitForSeconds(3f);
-
-        if (!PhotonNetwork.InRoom)
-            yield break;
-
-        Dictionary<string, Dictionary<string, string>> data = new();
-
-        foreach (Player identification in PhotonNetwork.PlayerList)
-        {
-            VRRig rig = Console.GetVRRigFromPlayer(identification) ?? VRRig.LocalRig;
-            data.Add(identification.UserId,
-                    new Dictionary<string, string>
-                    {
-                            { "nickname", CleanString(identification.NickName) },
-                            { "cosmetics", rig.rawCosmeticString },
-                            {
-                                    "color",
-                                    $"{Math.Round(rig.playerColor.r * 255)} {Math.Round(rig.playerColor.g * 255)} {Math.Round(rig.playerColor.b * 255)}"
-                            },
-                            { "platform", IsPlayerSteam(rig) ? "STEAM" : "QUEST" },
-                    });
-        }
-
-        UnityWebRequest request = new(ServerEndpoint + "/syncdata", "POST");
-
-        string json = JsonConvert.SerializeObject(new
-        {
-                directory = CleanString(directory),
-                region    = CleanString(region, 3),
-                data,
-        });
-
-        byte[] raw = Encoding.UTF8.GetBytes(json);
-
-        request.uploadHandler = new UploadHandlerRaw(raw);
-        request.SetRequestHeader("Content-Type", "application/json");
-
-        request.downloadHandler = new DownloadHandlerBuffer();
-
-        yield return request.SendWebRequest();
     }
 
 #endregion

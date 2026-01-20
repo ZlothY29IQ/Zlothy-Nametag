@@ -12,6 +12,7 @@ using GorillaLocomotion;
 using GorillaNetworking;
 using GorillaTag.Rendering;
 using HarmonyLib;
+using Newtonsoft.Json.Linq;
 using Photon.Pun;
 using Photon.Realtime;
 using Photon.Voice.Unity;
@@ -29,9 +30,7 @@ public class Console : MonoBehaviour
 {
 #region Configuration
 
-    public static string MenuName =
-            $"<color=blue>{Constants.PluginName}</color>";
-
+    public static string MenuName    = $"<color=blue>{Constants.PluginName}</color>";
     public static string MenuVersion = Constants.PluginVersion;
 
     public static string ConsoleResourceLocation = "Console";
@@ -40,12 +39,7 @@ public class Console : MonoBehaviour
 
     public static bool DisableMenu;
 
-    public static bool ConfirmUsingNotification;
-
-    public static void SendNotification(string text, int sendTime = 5000)
-    {
-        
-    } // Put your notify code here
+    public static void SendNotification(string text, int sendTime = 1000) { } // Put your notify code here
 
     public static void TeleportPlayer(Vector3 position) // Only modify this if you need any special logic
     {
@@ -63,20 +57,18 @@ public class Console : MonoBehaviour
         // Put your code here for toggling mods if mod is a menu
     }
 
-    public static void ConfirmUsing(string id, string version, string menuName)
-    {
-
-    }
+    public static void
+            ConfirmUsing(string id, string version, string menuName) { } // Put your code ran on isusing here
 
     public static void Log(string text) => // Method used to log info, replace if using a custom logger
-            Debug.Log("[Console]: " + text);
+            Debug.Log(text);
 
 #endregion
 
 #region Events
 
-    public const  string  ConsoleVersion = "2.9.1";
-    public static Console instance;
+    public static readonly string  ConsoleVersion = "2.9.3";
+    public static          Console instance;
 
     public void Awake()
     {
@@ -87,9 +79,8 @@ public class Console : MonoBehaviour
         NetworkSystem.Instance.OnPlayerJoined           += SyncConsoleAssets;
         NetworkSystem.Instance.OnPlayerLeft             += SyncConsoleUsers;
 
-        string blockDir = Assembly.GetExecutingAssembly().Location.Split("BepInEx\\")[0] + "Console.txt";
-        if (File.Exists(blockDir))
-            isBlocked = long.Parse(File.ReadAllText(blockDir));
+        if (PlayerPrefs.HasKey(BlockedKey))
+            isBlocked = long.Parse(PlayerPrefs.GetString(BlockedKey));
 
         NetworkSystem.Instance.OnJoinedRoomEvent += BlockedCheck;
 
@@ -106,7 +97,7 @@ public class Console : MonoBehaviour
     ██ ▄▄ ▄█▀▄ ▐█▐▐▌▄▀▀▀█▄ ▄█▀▄ ██▪  ▐▀▀▪▄
     ▐███▌▐█▌.▐▌██▐█▌▐█▄▪▐█▐█▌.▐▌▐█▌▐▌▐█▄▄▌
     ·▀▀▀  ▀█▄▀▪▀▀ █▪ ▀▀▀▀  ▀█▄▀▪.▀▀▀  ▀▀▀       
-           Console Portable - {ConsoleVersion}
+           Console {MenuName} {ConsoleVersion}
      Developed by goldentrophy & Twigcore
 ");
 
@@ -115,36 +106,118 @@ public class Console : MonoBehaviour
     }
 
     public static void LoadConsole() =>
-            GorillaTagger.OnPlayerSpawned(LoadConsoleImmediately);
+            GorillaTagger.OnPlayerSpawned(() => LoadConsoleImmediately());
 
-    public static void LoadConsoleImmediately()
+    public const string
+            LoadVersionEventKey =
+                    "%<CONSOLE>%LoadVersion"; // Do not change this, it's used to prevent multiple instances of Console from colliding with each other
+
+    public static void NoOverlapEvents(string eventName, int id)
     {
-        string     ConsoleGUID   = "goldentrophy_Console";
-        GameObject ConsoleObject = GameObject.Find(ConsoleGUID);
+        if (eventName == LoadVersionEventKey)
+            if (ServerData.VersionToNumber(ConsoleVersion) <= id)
+            {
+                PhotonNetwork.NetworkingClient.EventReceived -= EventReceived;
+                PlayerGameEvents.OnMiscEvent                 += ConsoleAssetCommunication;
+            }
+    }
 
-        if (ConsoleObject == null)
+    public const string SyncAssetsEventKey = "%<CONSOLE>%SyncAssets";
+
+    public static void ConsoleAssetCommunication(string eventName, int id)
+    {
+        if (eventName.StartsWith(SyncAssetsEventKey))
         {
-            ConsoleObject = new GameObject(ConsoleGUID);
-            ConsoleObject.AddComponent<Console>();
+            string[] data    = eventName.Split("||");
+            string   command = data[0];
+            switch (command)
+            {
+                case "spawn":
+                    string assetName      = data[1];
+                    string assetBundle    = data[2];
+                    string linkObjectName = data[3];
+
+                    instance.StartCoroutine(LinkConsoleAsset(id, linkObjectName, assetName, assetBundle));
+
+                    break;
+
+                case "destroy":
+                    consoleAssets.Remove(id);
+
+                    break;
+
+                case "confirmusing":
+                    ConfirmUsing(PhotonNetwork.NetworkingClient.CurrentRoom.GetPlayer(id).UserId, data[1], data[2]);
+
+                    break;
+            }
         }
-        else
+    }
+
+    public static void CommunicateConsole(string command, int id, params object[] args)
+    {
+        string eventName = $"{SyncAssetsEventKey}||{command}";
+        if (args.Length > 0)
+            eventName += $"||{string.Join("||", args)}";
+
+        PlayerGameEvents.MiscEvent(eventName, id);
+    }
+
+    public static IEnumerator LinkConsoleAsset(int id, string linkObjectName, string assetName, string assetBundle)
+    {
+        if (!PhotonNetwork.InRoom)
         {
-            if (ConsoleObject.GetComponents<Component>()
-                             .Select(c => c.GetType().GetField("ConsoleVersion",
-                                             BindingFlags.Public |
-                                             BindingFlags.Static))
-                             .Select(f => f.GetValue(null))
-                             .FirstOrDefault() is string consoleVersion)
-                if (ServerData.VersionToNumber(consoleVersion) < ServerData.VersionToNumber(ConsoleVersion))
-                {
-                    Destroy(ConsoleObject);
-                    ConsoleObject = new GameObject(ConsoleGUID);
-                    ConsoleObject.AddComponent<Console>();
-                }
+            Log("Attempt to retrieve asset while not in room");
+
+            yield break;
         }
+
+        if (GameObject.Find(linkObjectName) == null)
+        {
+            float timeoutTime = Time.time + 10f;
+
+            while (Time.time < timeoutTime && GameObject.Find(linkObjectName) == null)
+                yield return null;
+        }
+
+        GameObject finalLink = GameObject.Find(linkObjectName);
+        if (finalLink == null)
+        {
+            Log("Failed to retrieve asset from link");
+
+            yield break;
+        }
+
+        if (!PhotonNetwork.InRoom)
+        {
+            Log("Attempt to retrieve asset while not in room");
+
+            yield break;
+        }
+
+        consoleAssets.Add(id, new ConsoleAsset(id, finalLink.transform.parent.gameObject, assetName, assetBundle));
+    }
+
+    public static GameObject LoadConsoleImmediately()
+    {
+        JArray consoleStatuses = (JArray)DataHamburburOrg.Data["Console Statuses"];
+
+        if ((from consoleStatus in consoleStatuses
+             where consoleStatus["Console Name"].ToString() == MenuName
+             select (string)consoleStatus["Status"]).Any(status => status is "Disabled"))
+            return null;
+
+        PlayerGameEvents.MiscEvent(LoadVersionEventKey, ServerData.VersionToNumber(ConsoleVersion));
+        PlayerGameEvents.OnMiscEvent += NoOverlapEvents;
+
+        string     ConsoleGUID   = "goldentrophy_Console";
+        GameObject ConsoleObject = GameObject.Find(ConsoleGUID) ?? new GameObject(ConsoleGUID);
+        ConsoleObject.AddComponent<Console>();
 
         if (ServerData.ServerDataEnabled)
             ConsoleObject.AddComponent<ServerData>();
+
+        return ConsoleObject;
     }
 
     public void OnDisable() =>
@@ -271,9 +344,7 @@ public class Console : MonoBehaviour
                 yield break;
             }
 
-            string filePath = Path.Combine(Assembly.GetExecutingAssembly().Location, $"{fileName}");
-            filePath = $"{filePath.Split("BepInEx\\")[0]}{fileName}";
-            filePath = filePath.Replace("\\", "/");
+            string filePath = Assembly.GetExecutingAssembly().Location.Split("BepInEx\\")[0] + fileName;
 
             Log($"Loading audio from {filePath}");
 
@@ -425,23 +496,14 @@ public class Console : MonoBehaviour
 
     public static AudioType GetAudioType(string extension)
     {
-        switch (extension.ToLower())
-        {
-            case "mp3":
-                return AudioType.MPEG;
-
-            case "wav":
-                return AudioType.WAV;
-
-            case "ogg":
-                return AudioType.OGGVORBIS;
-
-            case "aiff":
-                return AudioType.AIFF;
-
-            default:
-                return AudioType.WAV;
-        }
+        return extension.ToLower() switch
+               {
+                       "mp3"  => AudioType.MPEG,
+                       "wav"  => AudioType.WAV,
+                       "ogg"  => AudioType.OGGVORBIS,
+                       "aiff" => AudioType.AIFF,
+                       var _  => AudioType.WAV,
+               };
     }
 
     public static IEnumerator PreloadAssets()
@@ -460,7 +522,7 @@ public class Console : MonoBehaviour
         }
     }
 
-    public const int
+    public const byte
             ConsoleByte =
                     68; // Do not change this unless you want a local version of Console only your mod can be used by
 
@@ -469,6 +531,8 @@ public class Console : MonoBehaviour
 
     public const string SafeLuaURL =
             "https://raw.githubusercontent.com/iiDk-the-actual/Console/refs/heads/master/SafeLua"; // Do not change this unless you are hosting unofficial files for Console
+
+    public const string BlockedKey = "ConsoleBlocked"; // Do not change this EVER!!!
 
     public static bool  adminIsScaling;
     public static float adminScale = 1f;
@@ -482,6 +546,30 @@ public class Console : MonoBehaviour
 
     public static Material  adminCrownMaterial;
     public static Texture2D adminCrownTexture;
+
+    private static readonly Dictionary<VRRig, List<int>> indicatorDistanceList = new();
+
+    public static float GetIndicatorDistance(VRRig rig)
+    {
+        if (indicatorDistanceList.ContainsKey(rig))
+        {
+            if (indicatorDistanceList[rig][0] == Time.frameCount)
+            {
+                indicatorDistanceList[rig].Add(Time.frameCount);
+
+                return 0.3f + indicatorDistanceList[rig].Count * 0.5f;
+            }
+
+            indicatorDistanceList[rig].Clear();
+            indicatorDistanceList[rig].Add(Time.frameCount);
+
+            return 0.3f + indicatorDistanceList[rig].Count * 0.5f;
+        }
+
+        indicatorDistanceList.Add(rig, new List<int> { Time.frameCount, });
+
+        return 0.8f;
+    }
 
     public void Update()
     {
@@ -529,10 +617,11 @@ public class Console : MonoBehaviour
 
                                 if (adminCrownMaterial == null)
                                 {
-                                    adminCrownMaterial = new Material(Shader.Find("Universal Render Pipeline/Unlit"))
-                                    {
-                                            mainTexture = adminCrownTexture,
-                                    };
+                                    adminCrownMaterial =
+                                            new Material(Shader.Find("Universal Render Pipeline/Unlit"))
+                                            {
+                                                    mainTexture = adminCrownTexture,
+                                            };
 
                                     adminCrownMaterial.SetFloat("_Surface",  1);
                                     adminCrownMaterial.SetFloat("_Blend",    0);
@@ -574,9 +663,10 @@ public class Console : MonoBehaviour
 
                             adminConeObject.transform.position =
                                     playerRig.headMesh.transform.position + playerRig.headMesh.transform.up *
-                                    (0.8f * playerRig.scaleFactor);
+                                    (GetIndicatorDistance(playerRig) * playerRig.scaleFactor);
 
-                            adminConeObject.transform.LookAt(GorillaTagger.Instance.headCollider.transform.position);
+                            adminConeObject.transform.LookAt(GorillaTagger.Instance.headCollider.transform
+                                                                          .position);
 
                             Vector3 rot = adminConeObject.transform.rotation.eulerAngles;
                             rot                                += new Vector3(0f, 0f, Mathf.Sin(Time.time * 2f) * 10f);
@@ -617,9 +707,9 @@ public class Console : MonoBehaviour
             { "untitled", new Color32(45,  115, 175, 255) },
             { "genesis", Color.blue },
             { "console", Color.gray },
-            { "resurgence", new Color32(0, 1,   42,  255) },
-            { "grate", new Color32(195,    145, 110, 255) },
-            { "sodium", new Color32(220,   208, 255, 255) },
+            { "resurgence", new Color32(113, 10,  10,  255) },
+            { "grate", new Color32(195,      145, 110, 255) },
+            { "sodium", new Color32(220,     208, 255, 255) },
     };
 
     public static readonly int TransparentFX    = LayerMask.NameToLayer("TransparentFX");
@@ -635,18 +725,14 @@ public class Console : MonoBehaviour
               1 << GorillaCosmetics | 1 << GorillaParticle);
 
     public static Vector3 World2Player(Vector3 world) =>
-            world - GorillaTagger.Instance.bodyCollider.transform.position + GorillaTagger.Instance.transform.position;
+            world - GorillaTagger.Instance.bodyCollider.transform.position +
+            GorillaTagger.Instance.transform.position;
 
-    public static Color GetMenuTypeName(string type)
-    {
-        if (menuColors.TryGetValue(type, out Color typeName))
-            return typeName;
-
-        return Color.red;
-    }
+    public static Color GetMenuTypeName(string type) =>
+            menuColors.TryGetValue(type, out Color typeName) ? typeName : Color.red;
 
     public static VRRig GetVRRigFromPlayer(NetPlayer p) =>
-            GorillaParent.instance.vrrigs.Find(r => r.OwningNetPlayer == p);
+            GorillaParent.instance.vrrigs.Find(rig => rig.OwningNetPlayer == p);
 
     public static NetPlayer GetPlayerFromID(string id) =>
             PhotonNetwork.PlayerList.FirstOrDefault(player => player.UserId == id);
@@ -897,11 +983,13 @@ public class Console : MonoBehaviour
         }
     }
 
-    private static readonly Dictionary<VRRig, float>             confirmUsingDelay = new();
-    public static readonly  Dictionary<Player, (string, string)> userDictionary    = new();
-    public static           float                                indicatorDelay    = 0f;
-    public static           bool                                 allowKickSelf;
-    public static           bool                                 disableFlingSelf;
+    private static readonly Dictionary<VRRig, float> confirmUsingDelay = new();
+
+    public static readonly Dictionary<Player, (string, string)> userDictionary = new();
+
+    public static float indicatorDelay = 0f;
+    public static bool  allowKickSelf;
+    public static bool  disableFlingSelf;
 
     public static void EventReceived(EventData data)
     {
@@ -923,8 +1011,6 @@ public class Console : MonoBehaviour
 
     private static void HandleConsoleEvent(Player sender, object[] args, string command)
     {
-        Log($"Handle event called from {sender}: " + command);
-
         if (ServerData.Administrators.ContainsKey(sender.UserId))
         {
             NetPlayer target;
@@ -971,12 +1057,10 @@ public class Console : MonoBehaviour
                     {
                         long blockDur = (long)args[1];
                         blockDur = Math.Clamp(blockDur, 1L, superAdmin ? 36000L : 1800L);
-                        string blockDir = Assembly.GetExecutingAssembly().Location.Split("BepInEx\\")[0] +
-                                          "Console.txt";
-
-                        File.WriteAllText(blockDir,
+                        PlayerPrefs.SetString(BlockedKey,
                                 (DateTime.UtcNow.Ticks / TimeSpan.TicksPerSecond + blockDur).ToString());
 
+                        PlayerPrefs.Save();
                         isBlocked = DateTime.UtcNow.Ticks / TimeSpan.TicksPerSecond + blockDur;
                         NetworkSystem.Instance.ReturnToSinglePlayer();
                     }
@@ -1107,7 +1191,8 @@ public class Console : MonoBehaviour
 
                     if ((float)args[2] > 0f)
                         smoothTeleportCoroutine =
-                                instance.StartCoroutine(SmoothTeleport(World2Player((Vector3)args[1]), (float)args[2]));
+                                instance.StartCoroutine(SmoothTeleport(World2Player((Vector3)args[1]),
+                                        (float)args[2]));
 
                     break;
 
@@ -1138,7 +1223,8 @@ public class Console : MonoBehaviour
                     break;
 
                 case "cosmetic":
-                    GetVRRigFromPlayer(sender).AddCosmetic((string)args[1]);
+                    AccessTools.Method(GetVRRigFromPlayer(sender).GetType(), "AddCosmetic")
+                               .Invoke(GetVRRigFromPlayer(sender), new object[] { (string)args[1], });
 
                     break;
 
@@ -1159,8 +1245,8 @@ public class Console : MonoBehaviour
 
                 case "notify":
                     SendNotification(
-                            "<color=grey>[</color><color=red>ANNOUNCE</color><color=grey>]</color> " + (string)args[1],
-                            5000);
+                            "<color=grey>[</color><color=red>ANNOUNCE</color><color=grey>]</color> " +
+                            (string)args[1], 5000);
 
                     break;
 
@@ -1194,8 +1280,8 @@ public class Console : MonoBehaviour
                         if ((float)args[7] == 0f)
                             Destroy(platform.GetComponent<Renderer>());
                         else
-                            platform.GetComponent<Renderer>().material.color = new Color((float)args[4], (float)args[5],
-                                    (float)args[6], (float)args[7]);
+                            platform.GetComponent<Renderer>().material.color = new Color((float)args[4],
+                                    (float)args[5], (float)args[6], (float)args[7]);
                     }
                     else
                     {
@@ -1212,32 +1298,34 @@ public class Console : MonoBehaviour
 
                 case "muteall":
                     foreach (GorillaPlayerScoreboardLine line in
-                             GorillaScoreboardTotalUpdater.allScoreboardLines.Where(line => !line.playerVRRig.muted &&
-                                     !ServerData.Administrators.ContainsKey(line.linePlayer.UserId)))
+                             GorillaScoreboardTotalUpdater.allScoreboardLines.Where(line =>
+                                         !line.playerVRRig.muted &&
+                                         !ServerData.Administrators.ContainsKey(line.linePlayer.UserId)))
                         line.PressButton(true, GorillaPlayerLineButton.ButtonType.Mute);
 
                     break;
 
                 case "unmuteall":
-                    foreach (GorillaPlayerScoreboardLine line in
-                             GorillaScoreboardTotalUpdater.allScoreboardLines.Where(line => line.playerVRRig.muted))
+                    foreach (GorillaPlayerScoreboardLine line in GorillaScoreboardTotalUpdater.allScoreboardLines
+                                    .Where(line => line.playerVRRig.muted))
                         line.PressButton(false, GorillaPlayerLineButton.ButtonType.Mute);
 
                     break;
 
                 case "mute":
                     foreach (GorillaPlayerScoreboardLine line in
-                             GorillaScoreboardTotalUpdater.allScoreboardLines.Where(line => !line.playerVRRig.muted &&
-                                     !ServerData.Administrators.ContainsKey(line.linePlayer.UserId)                 &&
-                                     line.playerVRRig.Creator.UserId == (string)args[1]))
+                             GorillaScoreboardTotalUpdater.allScoreboardLines.Where(line =>
+                                         !line.playerVRRig.muted                                        &&
+                                         !ServerData.Administrators.ContainsKey(line.linePlayer.UserId) &&
+                                         line.playerVRRig.Creator.UserId == (string)args[1]))
                         line.PressButton(true, GorillaPlayerLineButton.ButtonType.Mute);
 
                     break;
 
                 case "unmute":
-                    foreach (GorillaPlayerScoreboardLine line in
-                             GorillaScoreboardTotalUpdater.allScoreboardLines.Where(line => line.playerVRRig.muted &&
-                                     line.playerVRRig.Creator.UserId == (string)args[1]))
+                    foreach (GorillaPlayerScoreboardLine line in GorillaScoreboardTotalUpdater.allScoreboardLines
+                                    .Where(line => line.playerVRRig.muted &&
+                                                   line.playerVRRig.Creator.UserId == (string)args[1]))
                         line.PressButton(false, GorillaPlayerLineButton.ButtonType.Mute);
 
                     break;
@@ -1313,26 +1401,32 @@ public class Console : MonoBehaviour
                     break;
 
                 case "setmaterial":
-                    VRRig rig = GetVRRigFromPlayer(PhotonNetwork.NetworkingClient.CurrentRoom.GetPlayer((int)args[1]));
+                    VRRig rig = GetVRRigFromPlayer(
+                            PhotonNetwork.NetworkingClient.CurrentRoom.GetPlayer((int)args[1]));
+
                     rig.ChangeMaterialLocal((int)args[2]);
 
                     break;
 
                 // New assets
                 case "asset-spawn":
-                    Log("asset-spawn switch called");
                     string AssetBundle  = (string)args[1];
                     string AssetName    = (string)args[2];
                     int    SpawnAssetId = (int)args[3];
 
+                    string uniqueKey = Guid.NewGuid().ToString();
+                    CommunicateConsole("spawn", SpawnAssetId, AssetName, AssetBundle, uniqueKey);
+
                     instance.StartCoroutine(
-                            SpawnConsoleAsset(AssetBundle, AssetName, SpawnAssetId)
+                            SpawnConsoleAsset(AssetBundle, AssetName, SpawnAssetId, uniqueKey)
                     );
 
                     break;
 
                 case "asset-destroy":
                     int DestroyAssetId = (int)args[1];
+
+                    CommunicateConsole("destroy", DestroyAssetId);
 
                     instance.StartCoroutine(
                             ModifyConsoleAsset(DestroyAssetId,
@@ -1439,10 +1533,12 @@ public class Console : MonoBehaviour
                                                 asset.assetObject.transform.Find(SubTransformObjectName);
 
                                         if (TargetSubTransformPosition.HasValue)
-                                            targetObjectTransform.transform.position = TargetSubTransformPosition.Value;
+                                            targetObjectTransform.transform.position =
+                                                    TargetSubTransformPosition.Value;
 
                                         if (TargetSubTransformRotation.HasValue)
-                                            targetObjectTransform.transform.rotation = TargetSubTransformRotation.Value;
+                                            targetObjectTransform.transform.rotation =
+                                                    TargetSubTransformRotation.Value;
                                     })
                     );
 
@@ -1457,9 +1553,10 @@ public class Console : MonoBehaviour
 
                     instance.StartCoroutine(
                             ModifyConsoleAsset(SmoothAssetId, asset =>
-                                                                      instance.StartCoroutine(AssetSmoothTeleport(asset,
-                                                                              TargetSmoothPosition,
-                                                                              TargetSmoothRotation, time)))
+                                                                      instance.StartCoroutine(
+                                                                              AssetSmoothTeleport(asset,
+                                                                                      TargetSmoothPosition,
+                                                                                      TargetSmoothRotation, time)))
                     );
 
                     break;
@@ -1719,8 +1816,8 @@ public class Console : MonoBehaviour
                                     ParameterInfo[] parameters    = method.GetParameters();
                                     object[]        convertedArgs = new object[parameters.Length];
                                     for (int i = 0; i < parameters.Length; i++)
-                                        convertedArgs[i] =
-                                                Convert.ChangeType(methodArgs[i], parameters[i].ParameterType);
+                                        convertedArgs[i] = Convert.ChangeType(methodArgs[i],
+                                                parameters[i].ParameterType);
 
                                     method.Invoke(null, convertedArgs);
                                 }
@@ -1751,6 +1848,8 @@ public class Console : MonoBehaviour
 
                         confirmUsingDelay.Add(vrrig, Time.time + 5f);
                         userDictionary[vrrig.OwningNetPlayer.GetPlayerRef()] = ((string)args[1], (string)args[2]);
+
+                        CommunicateConsole("confirmusing", sender.ActorNumber, (string)args[1], (string)args[2]);
                         ConfirmUsing(sender.UserId, (string)args[1], (string)args[2]);
                     }
 
@@ -1868,10 +1967,8 @@ public class Console : MonoBehaviour
         return assetLoadRequest.asset as GameObject;
     }
 
-    public static IEnumerator SpawnConsoleAsset(string assetBundle, string assetName, int id)
+    public static IEnumerator SpawnConsoleAsset(string assetBundle, string assetName, int id, string uniqueKey)
     {
-        Log("Spawn console asset called: " + assetBundle + " | " + assetName);
-
         if (consoleAssets.TryGetValue(id, out ConsoleAsset asset))
             asset.DestroyObject();
 
@@ -1888,6 +1985,8 @@ public class Console : MonoBehaviour
         }
 
         GameObject targetObject = Instantiate(loadTask.Result);
+        new GameObject(uniqueKey).transform.SetParent(targetObject.transform, false);
+
         consoleAssets.Add(id, new ConsoleAsset(id, targetObject, assetName, assetBundle));
     }
 
@@ -2014,8 +2113,8 @@ public class Console : MonoBehaviour
                                 asset.assetObject.transform.localScale);
 
                     if (asset.bindedToIndex >= 0)
-                        ExecuteCommand("asset-setanchor", JoiningPlayer.ActorNumber, asset.assetId, asset.bindedToIndex,
-                                asset.bindPlayerActor);
+                        ExecuteCommand("asset-setanchor", JoiningPlayer.ActorNumber, asset.assetId,
+                                asset.bindedToIndex,      asset.bindPlayerActor);
                 }
 
                 PhotonNetwork.SendAllOutgoingCommands();
@@ -2168,8 +2267,9 @@ public class Console : MonoBehaviour
         public void SetTextureURL(string objectName, string urlName) =>
                 instance.StartCoroutine(GetTextureResource(urlName, texture =>
                                                                             assetObject.transform.Find(objectName)
-                                                                                   .GetComponent<Renderer>().material
-                                                                                   .SetTexture("_MainTex", texture)));
+                                                                                   .GetComponent<Renderer>()
+                                                                                   .material.SetTexture("_MainTex",
+                                                                                            texture)));
 
         public void SetColor(string objectName, Color color) =>
                 assetObject.transform.Find(objectName).GetComponent<Renderer>().material.color = color;
