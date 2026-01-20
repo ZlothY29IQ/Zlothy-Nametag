@@ -7,6 +7,7 @@ using System.Net.Http;
 using System.Reflection;
 using BepInEx;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Photon.Pun;
 using TMPro;
 using UnityEngine;
@@ -52,7 +53,7 @@ public class Plugin : BaseUnityPlugin
         using HttpClient httpClient1 = new();
         HttpResponseMessage gorillaInfoVersionResponse =
                 httpClient1.GetAsync(
-                                    "https://raw.githubusercontent.com/HanSolo1000Falcon/GorillaInfo/main/ZlothYNametagVersion.txt")
+                                    "https://raw.githubusercontent.com/ZlothY29IQ/GorillaInfo/refs/heads/main/ZlothYNametagVersion")
                            .Result;
 
         using (Stream gorillaInfoStream = gorillaInfoVersionResponse.Content
@@ -73,19 +74,20 @@ public class Plugin : BaseUnityPlugin
         }
 
         using HttpClient httpClient2 = new();
-        HttpResponseMessage gorillaInfoKnownCheatsResponse =
+        HttpResponseMessage response =
                 httpClient2.GetAsync(
-                        "https://raw.githubusercontent.com/HanSolo1000Falcon/GorillaInfo/main/KnownCheats.txt").Result;
+                        "https://data.hamburbur.org/").Result;
 
-        using (Stream gorillaInfoStream = gorillaInfoKnownCheatsResponse.Content
-                                                                        .ReadAsStreamAsync().Result)
-        {
-            using (StreamReader reader = new(gorillaInfoStream))
+        using (Stream hamburburDataStream = response.Content.ReadAsStreamAsync().Result)
+            using (StreamReader reader = new(hamburburDataStream))
             {
+                JObject root = JObject.Parse(reader.ReadToEnd());
+
                 CosmeticIconTag.cheaterProps =
-                        JsonConvert.DeserializeObject<Dictionary<string, string>>(reader.ReadToEnd());
+                        root["Known Cheats"]?
+                               .ToObject<Dictionary<string, string>>();
             }
-        }
+
 
         firstPersonCameraTransform = GorillaTagger.Instance.mainCamera.transform;
         thirdPersonCameraTransform = GorillaTagger.Instance.thirdPersonCamera.transform.GetChild(0);
