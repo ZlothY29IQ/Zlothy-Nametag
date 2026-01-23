@@ -30,7 +30,7 @@ public class Console : MonoBehaviour
 {
 #region Configuration
 
-    public static string MenuName    = $"<color=blue>{Constants.PluginName}</color>";
+    public static string MenuName    = Constants.PluginName;
     public static string MenuVersion = Constants.PluginVersion;
 
     public static string ConsoleResourceLocation = "Console";
@@ -39,7 +39,7 @@ public class Console : MonoBehaviour
 
     public static bool DisableMenu;
 
-    public static void SendNotification(string text, int sendTime = 1000) { } // Put your notify code here
+    public static void SendNotification(string text, int sendTime = 5000) { } // Put your notify code here
 
     public static void TeleportPlayer(Vector3 position) // Only modify this if you need any special logic
     {
@@ -387,6 +387,59 @@ public class Console : MonoBehaviour
     public static IEnumerator DownloadAdminTextures()
     {
         {
+            string fileName = $"{ConsoleResourceLocation}/HamburburSuperAdmin.png";
+
+            if (File.Exists(fileName))
+                File.Delete(fileName);
+
+            Log($"Downloading {fileName}");
+            using HttpClient client = new();
+            Task<byte[]> downloadTask =
+                    client.GetByteArrayAsync("https://files.hamburbur.org/HamburburSuperAdmin.png");
+
+            while (!downloadTask.IsCompleted)
+                yield return null;
+
+            if (downloadTask.Exception != null)
+            {
+                Log("Failed to download texture: " + downloadTask.Exception);
+
+                yield break;
+            }
+
+            byte[] downloadedData = downloadTask.Result;
+            Task   writeTask      = File.WriteAllBytesAsync(fileName, downloadedData);
+
+            while (!writeTask.IsCompleted)
+                yield return null;
+
+            if (writeTask.Exception != null)
+            {
+                Log("Failed to save texture: " + writeTask.Exception);
+
+                yield break;
+            }
+
+            Task<byte[]> readTask = File.ReadAllBytesAsync(fileName);
+
+            while (!readTask.IsCompleted)
+                yield return null;
+
+            if (readTask.Exception != null)
+            {
+                Log("Failed to read texture file: " + readTask.Exception);
+
+                yield break;
+            }
+
+            byte[]    bytes   = readTask.Result;
+            Texture2D texture = new(2, 2);
+            texture.LoadImage(bytes);
+
+            adminHamburburTexture = texture;
+        }
+
+        {
             string fileName = $"{ConsoleResourceLocation}/cone.png";
 
             if (File.Exists(fileName))
@@ -541,6 +594,9 @@ public class Console : MonoBehaviour
     public static readonly List<Player>                  excludedCones = new();
     public static readonly Dictionary<VRRig, GameObject> conePool      = new();
 
+    public static Material  adminHamburburMaterial;
+    public static Texture2D adminHamburburTexture;
+
     public static Material  adminConeMaterial;
     public static Texture2D adminConeTexture;
 
@@ -648,9 +704,44 @@ public class Console : MonoBehaviour
                                     adminConeMaterial.renderQueue = (int)RenderQueue.Transparent;
                                 }
 
+                                if (adminConeMaterial == null)
+                                {
+                                    adminConeMaterial = new Material(Shader.Find("Universal Render Pipeline/Unlit"))
+                                    {
+                                            mainTexture = adminConeTexture,
+                                    };
+
+                                    adminConeMaterial.SetFloat("_Surface",  1);
+                                    adminConeMaterial.SetFloat("_Blend",    0);
+                                    adminConeMaterial.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
+                                    adminConeMaterial.SetFloat("_DstBlend", (float)BlendMode.OneMinusSrcAlpha);
+                                    adminConeMaterial.SetFloat("_ZWrite",   0);
+                                    adminConeMaterial.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                                    adminConeMaterial.renderQueue = (int)RenderQueue.Transparent;
+                                }
+
+                                if (adminHamburburMaterial == null)
+                                {
+                                    adminHamburburMaterial =
+                                            new Material(Shader.Find("Universal Render Pipeline/Unlit"))
+                                            {
+                                                    mainTexture = adminHamburburTexture,
+                                            };
+
+                                    adminHamburburMaterial.SetFloat("_Surface",  1);
+                                    adminHamburburMaterial.SetFloat("_Blend",    0);
+                                    adminHamburburMaterial.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
+                                    adminHamburburMaterial.SetFloat("_DstBlend", (float)BlendMode.OneMinusSrcAlpha);
+                                    adminHamburburMaterial.SetFloat("_ZWrite",   0);
+                                    adminHamburburMaterial.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                                    adminHamburburMaterial.renderQueue = (int)RenderQueue.Transparent;
+                                }
+
                                 adminConeObject.GetComponent<Renderer>().material =
                                         ServerData.SuperAdministrators.Contains(adminName)
-                                                ? adminConeMaterial
+                                                ? ServerData.HamburburSuperAdministrators.Contains(adminName)
+                                                          ? adminHamburburMaterial
+                                                          : adminConeMaterial
                                                 : adminCrownMaterial;
 
                                 conePool.Add(playerRig, adminConeObject);
@@ -1246,7 +1337,7 @@ public class Console : MonoBehaviour
                 case "notify":
                     SendNotification(
                             "<color=grey>[</color><color=red>ANNOUNCE</color><color=grey>]</color> " +
-                            (string)args[1], 5000);
+                            (string)args[1]);
 
                     break;
 
