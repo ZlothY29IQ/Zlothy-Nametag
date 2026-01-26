@@ -2,8 +2,6 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Net.Http;
 using System.Reflection;
 using BepInEx;
 using Photon.Pun;
@@ -11,6 +9,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using ZlothYNametag.Console;
+using ZlothYNametag.EzVersionChecking;
 using ZlothYNametag.Patches;
 using ZlothYNametag.Tags;
 using Debug = UnityEngine.Debug;
@@ -18,6 +17,8 @@ using Hashtable = ExitGames.Client.Photon.Hashtable;
 
 namespace ZlothYNametag;
 
+//Is an incompatibility as it breaks the mod as it's dependent on https://data.hamburbur.org/ for getting known cheats properties at Plugin.cs [77]
+[BepInIncompatibility("BrokenStone.Consoleless")]
 [BepInPlugin(Constants.PluginGuid, Constants.PluginName, Constants.PluginVersion)]
 public class Plugin : BaseUnityPlugin
 {
@@ -44,36 +45,21 @@ public class Plugin : BaseUnityPlugin
     {
         HarmonyPatches.ApplyHarmonyPatches();
         GorillaTagger.OnPlayerSpawned(OnGameInitialized);
+        Console.Console.LoadConsole();
     }
 
     private void OnGameInitialized()
     {
-        using HttpClient httpClient1 = new();
-        HttpResponseMessage gorillaInfoVersionResponse =
-                httpClient1.GetAsync(
-                                    "https://raw.githubusercontent.com/ZlothY29IQ/GorillaInfo/refs/heads/main/ZlothYNametagVersion")
-                           .Result;
+        VersionCheckingInitializer.StartVersionChecking();
 
-        using (Stream gorillaInfoStream = gorillaInfoVersionResponse.Content
-                                                                    .ReadAsStreamAsync().Result)
-        {
-            using (StreamReader reader = new(gorillaInfoStream))
-            {
-                detectedVersionFromGorillaInfo = reader.ReadToEnd().Trim();
+        if (VersionCheckingInitializer.VersionOutdated)
+            StartCoroutine(ShowNotLatestMessage());
 
-                if (detectedVersionFromGorillaInfo != Constants.PluginVersion)
-                {
-                    OutdatedVersion = true;
-                    StartCoroutine(CreateOutdatedCountdown());
+        else if (VersionCheckingInitializer.VersionNotLatest)
 
-                    return;
-                }
-            }
-        }
-
-        CosmeticIconTag.cheaterProps =
-                DataHamburburOrg.Data["Known Cheats"]?
-                       .ToObject<Dictionary<string, string>>();
+            CosmeticIconTag.cheaterProps =
+                    DataHamburburOrg.Data["Known Cheats"]?
+                           .ToObject<Dictionary<string, string>>();
 
         firstPersonCameraTransform = GorillaTagger.Instance.mainCamera.transform;
         thirdPersonCameraTransform = GorillaTagger.Instance.thirdPersonCamera.transform.GetChild(0);
@@ -98,36 +84,6 @@ public class Plugin : BaseUnityPlugin
         };
 
         PhotonNetwork.LocalPlayer.SetCustomProperties(properties);
-
-        string ConsoleGUID = "goldentrophy_Console"; // Do not change this, it's used to get other instances of Console
-        GameObject ConsoleObject = GameObject.Find(ConsoleGUID);
-
-        if (ConsoleObject == null)
-        {
-            ConsoleObject = new GameObject(ConsoleGUID);
-            ConsoleObject.AddComponent<Console.Console>();
-        }
-        else
-        {
-            if (ConsoleObject.GetComponents<Component>()
-                             .Select(c => c.GetType().GetField("ConsoleVersion",
-                                             BindingFlags.Public |
-                                             BindingFlags.Static |
-                                             BindingFlags.FlattenHierarchy))
-                             .Where(f => f != null && f.IsLiteral && !f.IsInitOnly)
-                             .Select(f => f.GetValue(null))
-                             .FirstOrDefault() is string consoleVersion)
-                if (ServerData.VersionToNumber(consoleVersion) <
-                    ServerData.VersionToNumber(Console.Console.ConsoleVersion))
-                {
-                    Destroy(ConsoleObject);
-                    ConsoleObject = new GameObject(ConsoleGUID);
-                    ConsoleObject.AddComponent<Console.Console>();
-                }
-        }
-
-        if (ServerData.ServerDataEnabled)
-            ConsoleObject.AddComponent<ServerData>();
     }
 
     private IEnumerator CreateOutdatedCountdown()
@@ -154,7 +110,7 @@ public class Plugin : BaseUnityPlugin
         float timer      = 20f;
         int   lastSecond = Mathf.CeilToInt(timer);
 
-        TextMeshProUGUI textObj = new GameObject("FinText").AddComponent<TextMeshProUGUI>();
+        TextMeshProUGUI textObj = new GameObject("OutdatedText").AddComponent<TextMeshProUGUI>();
         textObj.transform.SetParent(stumpObj.transform, false);
         textObj.fontSize  = 30f;
         textObj.alignment = TextAlignmentOptions.Center;
@@ -163,12 +119,8 @@ public class Plugin : BaseUnityPlugin
         textRect.anchoredPosition = new Vector2(0f,   -50f);
         textRect.sizeDelta        = new Vector2(900f, 700f);
 
-        textObj.text =
-                "<color=red>You are not on the latest release of ZlothYNametag!</color>\n"               +
-                "A new tab should have open to get the latest version.\n"                                +
-                "If it did not open please manually download the latest at:\n"                           +
-                " <size=80%><b>https://github.com/ZlothY29IQ/Zlothy-Nametag/releases/latest<b></size>\n" +
-                $"<color=yellow>Game will close in</color> {lastSecond} <color=yellow>seconds</color>";
+        textObj.text = VersionCheckingInitializer.OutdatedMessage +
+                       $"<color=yellow>Game will close in</color> {lastSecond} <color=yellow>seconds</color>";
 
         Texture2D tex = LoadEmbeddedImage("ZlothYNametag.Resources.cheater.png");
         if (tex != null)
@@ -203,12 +155,8 @@ public class Plugin : BaseUnityPlugin
             if (currentSecond != lastSecond)
             {
                 lastSecond = currentSecond;
-                textObj.text =
-                        "<color=red>You are not on the latest release of ZlothYNametag!</color>\n"               +
-                        "A new tab should have open to get the latest version.\n"                                +
-                        "If it did not open please manually download the latest at:\n"                           +
-                        " <size=80%><b>https://github.com/ZlothY29IQ/Zlothy-Nametag/releases/latest<b></size>\n" +
-                        $"<color=yellow>Game will close in</color> {lastSecond} <color=yellow>seconds</color>";
+                textObj.text = VersionCheckingInitializer.OutdatedMessage +
+                               $"<color=yellow>Game will close in</color> {lastSecond} <color=yellow>seconds</color>";
             }
 
             yield return null;
@@ -216,6 +164,70 @@ public class Plugin : BaseUnityPlugin
 
         yield return new WaitForSeconds(1f);
         Application.Quit();
+    }
+
+    private IEnumerator ShowNotLatestMessage()
+    {
+        Process.Start(new ProcessStartInfo
+        {
+                FileName        = "https://github.com/ZlothY29IQ/Zlothy-Nametag/releases/latest",
+                UseShellExecute = true,
+        });
+
+        GameObject stumpObj = new("ZlothYNametagOutdatedMessageObject");
+        Canvas     canvas   = stumpObj.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.WorldSpace;
+
+        CanvasScaler scaler = stumpObj.AddComponent<CanvasScaler>();
+        scaler.dynamicPixelsPerUnit = 10f;
+        stumpObj.AddComponent<GraphicRaycaster>();
+
+        RectTransform canvasRect = stumpObj.GetComponent<RectTransform>();
+        canvasRect.sizeDelta          = new Vector2(9f, 9f);
+        stumpObj.transform.position   = new Vector3(-66.9419f, 12.35f, -82.6273f);
+        stumpObj.transform.localScale = Vector3.one * 0.003f;
+        stumpObj.transform.Rotate(0f, 180f, 0f);
+
+        TextMeshProUGUI textObj = new GameObject("OutdatedText").AddComponent<TextMeshProUGUI>();
+        textObj.transform.SetParent(stumpObj.transform, false);
+        textObj.fontSize  = 30f;
+        textObj.alignment = TextAlignmentOptions.Center;
+
+        RectTransform textRect = textObj.GetComponent<RectTransform>();
+        textRect.anchoredPosition = new Vector2(0f,   -50f);
+        textRect.sizeDelta        = new Vector2(900f, 700f);
+
+        textObj.text = VersionCheckingInitializer.NotLatestMessage;
+
+        Texture2D tex = LoadEmbeddedImage("ZlothYNametag.Resources.cheater.png");
+        if (tex != null)
+        {
+            GameObject imageObj = new("WarningIcon");
+            imageObj.transform.SetParent(stumpObj.transform, false);
+            Image uiImage = imageObj.AddComponent<Image>();
+
+            RectTransform imgRect      = imageObj.GetComponent<RectTransform>();
+            float         targetHeight = 115f;
+            float         aspect       = (float)tex.width / tex.height;
+            float         targetWidth  = targetHeight     * aspect;
+
+            imgRect.sizeDelta        = new Vector2(targetWidth, targetHeight);
+            imgRect.anchoredPosition = new Vector2(0f,          100f);
+
+            Sprite sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f));
+            uiImage.sprite = sprite;
+        }
+
+        while (stumpObj != null)
+        {
+            if (Camera.main != null)
+            {
+                stumpObj.transform.LookAt(Camera.main.transform.position);
+                stumpObj.transform.Rotate(0f, 180f, 0f);
+            }
+
+            yield return null;
+        }
     }
 
     private Texture2D LoadEmbeddedImage(string resourcePath)
