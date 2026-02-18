@@ -16,7 +16,7 @@ public static class DataHamburburOrg
                 return DataBackingField;
 
             using HttpClient    httpClient   = new();
-            HttpResponseMessage dataResponse = httpClient.GetAsync("https://data.hamburbur.org/").Result;
+            HttpResponseMessage dataResponse = httpClient.GetAsync("https://hamburbur.org/data").Result;
             using Stream        dataStream   = dataResponse.Content.ReadAsStreamAsync().Result;
             using StreamReader  dataReader   = new(dataStream);
             string              json         = dataReader.ReadToEnd().Trim();

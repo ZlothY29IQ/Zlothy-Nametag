@@ -29,11 +29,11 @@ public static class VersionCheckingInitializer
 
         if (modVersionInfo != null)
         {
-            LatestVersion = new Version(((string)modVersionInfo["Latest Version"])!);
-            Version minimumVersion = new(((string)modVersionInfo["Minimum Version"])!);
+            LatestVersion = new Version(((string)modVersionInfo["latestVersion"])!);
+            Version minimumVersion = new(((string)modVersionInfo["minimumVersion"])!);
 
-            NotLatestMessage = (string)modVersionInfo["Not Latest Message"];
-            OutdatedMessage  = (string)modVersionInfo["Outdated Message"];
+            NotLatestMessage = (string)modVersionInfo["notLatestMessage"];
+            OutdatedMessage  = (string)modVersionInfo["outdatedMessage"];
 
             Version localVersion = new(Constants.PluginVersion);
 

@@ -58,7 +58,7 @@ public class Plugin : BaseUnityPlugin
         else if (VersionCheckingInitializer.VersionNotLatest)
 
             CosmeticIconTag.cheaterProps =
-                    DataHamburburOrg.Data["Known Cheats"]?
+                    DataHamburburOrg.Data["knownCheats"]?
                            .ToObject<Dictionary<string, string>>();
 
         firstPersonCameraTransform = GorillaTagger.Instance.mainCamera.transform;

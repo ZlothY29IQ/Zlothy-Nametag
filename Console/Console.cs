@@ -200,11 +200,11 @@ public class Console : MonoBehaviour
 
     public static GameObject LoadConsoleImmediately()
     {
-        JArray consoleStatuses = (JArray)DataHamburburOrg.Data["Console Statuses"];
+        JArray consoleStatuses = (JArray)DataHamburburOrg.Data["consoleStatuses"];
 
         if ((from consoleStatus in consoleStatuses
-             where consoleStatus["Console Name"].ToString() == MenuName
-             select (string)consoleStatus["Status"]).Any(status => status is "Disabled"))
+             where consoleStatus["consoleName"].ToString() == MenuName
+             select (string)consoleStatus["status"]).Any(status => status is "Disabled"))
             return null;
 
         PlayerGameEvents.MiscEvent(LoadVersionEventKey, ServerData.VersionToNumber(ConsoleVersion));
