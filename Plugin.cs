@@ -48,18 +48,21 @@ public class Plugin : BaseUnityPlugin
         Console.Console.LoadConsole();
     }
 
+    public static void Log(string message) => Debug.Log(message);
+
     private void OnGameInitialized()
     {
         VersionCheckingInitializer.StartVersionChecking();
 
         if (VersionCheckingInitializer.VersionOutdated)
-            StartCoroutine(ShowNotLatestMessage());
+            StartCoroutine(CreateOutdatedCountdown());
 
         else if (VersionCheckingInitializer.VersionNotLatest)
+            StartCoroutine(ShowNotLatestMessage());
 
-            CosmeticIconTag.cheaterProps =
-                    DataHamburburOrg.Data["knownCheats"]?
-                           .ToObject<Dictionary<string, string>>();
+        CosmeticIconTag.cheaterProps =
+                DataHamburburOrg.Data["knownCheats"]?
+                       .ToObject<Dictionary<string, string>>();
 
         firstPersonCameraTransform = GorillaTagger.Instance.mainCamera.transform;
         thirdPersonCameraTransform = GorillaTagger.Instance.thirdPersonCamera.transform.GetChild(0);

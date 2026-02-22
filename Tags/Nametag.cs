@@ -14,7 +14,7 @@ public class Nametag : MonoBehaviour
     private NetPlayer   player;
     private TextMeshPro thirdPersonTagText;
 
-    private void Start() => player = GetComponent<VRRig>().OwningNetPlayer;
+    private void Start() => player = GetComponent<VRRig>().creator;
 
     private void Update()
     {
@@ -51,6 +51,8 @@ public class Nametag : MonoBehaviour
 
     private void CreateNametag(ref GameObject tagObj, ref TextMeshPro tagText, string name, string layerName)
     {
+        Plugin.Log($"Creating nametag for {name}");
+        
         tagObj                                   = new GameObject(name, typeof(Canvas), typeof(RectTransform));
         tagObj.GetComponent<Canvas>().renderMode = RenderMode.WorldSpace;
         tagObj.transform.SetParent(transform);

@@ -62,6 +62,8 @@ public class FPSTag : MonoBehaviour
     private void CreateNametag(ref GameObject tagObj, ref TextMeshPro tagText, string name, string layerName,
                                bool           isThirdPerson)
     {
+        Plugin.Log($"Creating nametag for {name}");
+        
         tagObj = new GameObject(name);
         tagObj.transform.SetParent(isThirdPerson
                                            ? GetComponent<Nametag>().ThirdPersonTag.transform

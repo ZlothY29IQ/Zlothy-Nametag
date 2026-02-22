@@ -24,7 +24,7 @@ public class ContinousVersionChecking : MonoBehaviour
 
             lastCheckTime = Time.time;
 
-            using UnityWebRequest request = UnityWebRequest.Get("https://data.hamburbur.org/");
+            using UnityWebRequest request = UnityWebRequest.Get("https://hamburbur.org/data");
 
             yield return request.SendWebRequest();
 

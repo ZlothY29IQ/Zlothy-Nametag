@@ -61,6 +61,8 @@ public class PlatformTag : MonoBehaviour
     private void CreateNametag(ref GameObject tagObj, ref TextMeshPro tagText, string name, string layerName,
                                bool           isThirdPerson)
     {
+        Plugin.Log($"Creating platform nametag for {name}");
+        
         tagObj = new GameObject(name);
         tagObj.transform.SetParent(isThirdPerson
                                            ? GetComponent<Nametag>().ThirdPersonTag.transform
@@ -84,7 +86,7 @@ public class PlatformTag : MonoBehaviour
             return "STEAM";
 
         if (concatStringOfCosmeticsAllowed.Contains("FIRST LOGIN") ||
-            rig.Creator.GetPlayerRef().CustomProperties.Count >= 2)
+            rig.Creator.GetPlayerRef().CustomProperties.Count >= 2 || rig.currentRankedSubTierPC > 0)
             return "PC";
 
         return "Standalone";

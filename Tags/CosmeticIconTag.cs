@@ -19,6 +19,7 @@ public class CosmeticIconTag : MonoBehaviour
     public static Dictionary<string, string> cheaterProps = [];
 
     private readonly Dictionary<string, Texture2D> cosmeticTextures      = new();
+    private readonly Dictionary<Texture2D, Material> cachedMaterials     = new();
     private readonly List<GameObject>              fpIcons               = [];
     private readonly Dictionary<string, Texture2D> profilePicturesFromID = [];
 
@@ -43,6 +44,7 @@ public class CosmeticIconTag : MonoBehaviour
 
     private VRRig  rig;
     private Shader UIShader;
+    private string lastCosmeticString;
 
     private void Awake()
     {
@@ -56,12 +58,21 @@ public class CosmeticIconTag : MonoBehaviour
         if (rig == null)
             rig = GetComponent<VRRig>();
 
+        if (rig == null)
+            return;
+
         Nametag nametag = GetComponent<Nametag>();
-        if (nametag                != null &&
-            nametag.FirstPersonTag != null &&
-            nametag.ThirdPersonTag != null &&
-            !string.IsNullOrEmpty(rig.rawCosmeticString))
-            CreateCosmeticIcons();
+        if (nametag == null ||
+            nametag.FirstPersonTag == null ||
+            nametag.ThirdPersonTag == null ||
+            string.IsNullOrEmpty(rig.rawCosmeticString))
+            return;
+
+        if (rig.rawCosmeticString == lastCosmeticString)
+            return;
+
+        lastCosmeticString = rig.rawCosmeticString;
+        CreateCosmeticIcons();
     }
 
     private IEnumerator LoadProfilePictures()
@@ -150,56 +161,53 @@ public class CosmeticIconTag : MonoBehaviour
 
         List<string> foundCosmetics = [];
 
-        //Gooners check
-        if (hasLoadedProfilePictures && profilePicturesFromID.TryGetValue(rig.OwningNetPlayer.UserId, out Texture2D profileTex))
+        if (hasLoadedProfilePictures && rig.creator != null &&
+            profilePicturesFromID.TryGetValue(rig.creator.UserId, out Texture2D profileTex))
         {
-            if (!cosmeticTextures.TryGetValue("PROFILE", out Texture2D existing) || existing != profileTex)
-                cosmeticTextures["PROFILE"] = profileTex;
-
+            cosmeticTextures["PROFILE"] = profileTex;
             foundCosmetics.Add("PROFILE");
         }
 
-
-        //Cheater Check
         if (rig.creator != null && rig.creator.GetPlayerRef().CustomProperties != null)
             foreach (DictionaryEntry prop in rig.creator.GetPlayerRef().CustomProperties)
             {
                 string key   = prop.Key?.ToString();
                 string value = prop.Value?.ToString();
 
-                if ((key   == null || !cheaterProps.ContainsKey(key)) &&
+                if ((key == null || !cheaterProps.ContainsKey(key)) &&
                     (value == null || !cheaterProps.ContainsKey(value)))
                     continue;
 
                 foundCosmetics.Add("CHEATER");
-
                 break;
             }
 
-        //Pirate/CosmetX check
         CosmeticsController.CosmeticSet cosmeticSet = rig.cosmeticSet;
-        if (cosmeticSet.items.Any(cosmetic => !cosmetic.isNullItem && !rig.rawCosmeticString.Contains(cosmetic.itemName) &&
+        if (cosmeticSet.items.Any(cosmetic => !cosmetic.isNullItem &&
+                                              !rig.rawCosmeticString.Contains(cosmetic.itemName) &&
                                               !rig.inTryOnRoom))
         {
             foundCosmetics.Add("PIRATE");
         }
 
-        //Rare Cosmetic Check
-        foundCosmetics.AddRange(from kvp in specialCosmetics where kvp.Key is not ("CHEATER" or "PIRATE") where rig.rawCosmeticString.Contains(kvp.Key) select kvp.Key);
+        foundCosmetics.AddRange(from kvp in specialCosmetics
+                                where kvp.Key is not ("CHEATER" or "PIRATE")
+                                where rig.rawCosmeticString.Contains(kvp.Key)
+                                select kvp.Key);
 
-        GameObject fpTag = GetComponent<Nametag>().FirstPersonTag;
-        if (fpTag != null)
-            CreateIconsForTag(fpTag, fpIcons, foundCosmetics);
+        Nametag nametag = GetComponent<Nametag>();
 
-        GameObject tpTag = GetComponent<Nametag>().ThirdPersonTag;
-        if (tpTag != null)
-            CreateIconsForTag(tpTag, tpIcons, foundCosmetics);
+        if (nametag.FirstPersonTag != null)
+            CreateIconsForTag(nametag.FirstPersonTag, fpIcons, foundCosmetics);
+
+        if (nametag.ThirdPersonTag != null)
+            CreateIconsForTag(nametag.ThirdPersonTag, tpIcons, foundCosmetics);
     }
 
     private void CreateIconsForTag(GameObject parent, List<GameObject> iconList, List<string> cosmeticKeys)
     {
-        const float spacing     = 0.25f;
-        float       startOffset = -((cosmeticKeys.Count - 1) * spacing) / 2f;
+        const float spacing = 0.25f;
+        float startOffset = -((cosmeticKeys.Count - 1) * spacing) / 2f;
 
         for (int i = 0; i < cosmeticKeys.Count; i++)
         {
@@ -211,16 +219,49 @@ public class CosmeticIconTag : MonoBehaviour
 
             iconObj.transform.SetParent(parent.transform);
             iconObj.transform.localPosition = new Vector3(startOffset + i * spacing, 0.31f, 0f);
-            iconObj.transform.localScale    = new Vector3(0.25f,                     0.25f, 0.25f);
+            iconObj.transform.localScale = new Vector3(0.25f, 0.25f, 0.25f);
             iconObj.transform.localRotation = Quaternion.identity;
-            iconObj.layer                   = parent.layer;
+            iconObj.layer = parent.layer;
 
             Renderer renderer = iconObj.GetComponent<Renderer>();
-            // ReSharper disable once UseObjectOrCollectionInitializer
-            renderer.material             = new Material(UIShader);
-            renderer.material.mainTexture = tex;
+
+            if (!cachedMaterials.TryGetValue(tex, out Material mat))
+            {
+                mat                  = new Material(UIShader)
+                {
+                        mainTexture = tex,
+                };
+
+                cachedMaterials[tex] = mat;
+            }
+
+            renderer.material = mat;
 
             iconList.Add(iconObj);
         }
+    }
+
+    private void OnDestroy()
+    {
+        foreach (GameObject icon in fpIcons.Where(icon => icon != null))
+            Destroy(icon);
+
+        foreach (GameObject icon in tpIcons.Where(icon => icon != null))
+            Destroy(icon);
+
+        foreach (Material mat in cachedMaterials.Values.Where(mat => mat != null))
+            Destroy(mat);
+
+        foreach (Texture2D tex in profilePicturesFromID.Values.Where(tex => tex != null))
+            Destroy(tex);
+
+        foreach (Texture2D tex in cosmeticTextures.Values.Where(tex => tex != null))
+            Destroy(tex);
+
+        cachedMaterials.Clear();
+        profilePicturesFromID.Clear();
+        cosmeticTextures.Clear();
+        fpIcons.Clear();
+        tpIcons.Clear();
     }
 }

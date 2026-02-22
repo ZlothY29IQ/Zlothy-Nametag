@@ -12,11 +12,13 @@ public class SetColourPatch
         if (__instance.isLocal || Plugin.Instance.OutdatedVersion)
             return;
 
+        Plugin.Log($"Rig update colour, removing rig for {__instance.creator.SanitizedNickName}");
+
         __instance.GetOrAddComponent(out Nametag nametag);
         nametag.UpdateColour(color);
 
-        __instance.GetOrAddComponent(out FPSTag _);
-        __instance.GetOrAddComponent(out PlatformTag _);
-        __instance.GetOrAddComponent(out CosmeticIconTag _);
+        if (!__instance.TryGetComponent(out FPSTag _)) __instance.AddComponent<FPSTag>();
+        if (!__instance.TryGetComponent(out PlatformTag _)) __instance.AddComponent<PlatformTag>();
+        if (!__instance.TryGetComponent(out CosmeticIconTag _)) __instance.AddComponent<CosmeticIconTag>();
     }
 }
