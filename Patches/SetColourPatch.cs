@@ -19,6 +19,5 @@ public class SetColourPatch
 
         if (!__instance.TryGetComponent(out FPSTag _)) __instance.AddComponent<FPSTag>();
         if (!__instance.TryGetComponent(out PlatformTag _)) __instance.AddComponent<PlatformTag>();
-        if (!__instance.TryGetComponent(out CosmeticIconTag _)) __instance.AddComponent<CosmeticIconTag>();
     }
 }

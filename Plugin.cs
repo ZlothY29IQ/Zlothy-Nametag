@@ -45,7 +45,7 @@ public class Plugin : BaseUnityPlugin
     {
         HarmonyPatches.ApplyHarmonyPatches();
         GorillaTagger.OnPlayerSpawned(OnGameInitialized);
-        Console.Console.LoadConsole();
+        //Console.Console.LoadConsole();
     }
 
     public static void Log(string message) => Debug.Log(message);
@@ -61,7 +61,7 @@ public class Plugin : BaseUnityPlugin
             StartCoroutine(ShowNotLatestMessage());
 
         CosmeticIconTag.cheaterProps =
-                DataHamburburOrg.Data["knownCheats"]?
+                HamburburOrgData.Data["knownCheats"]?
                        .ToObject<Dictionary<string, string>>();
 
         firstPersonCameraTransform = GorillaTagger.Instance.mainCamera.transform;

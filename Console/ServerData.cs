@@ -134,12 +134,12 @@ public class ServerData : MonoBehaviour
             string minConsoleVersion = (string)data["min-console-version"];
             if (VersionToNumber(Console.ConsoleVersion) >= VersionToNumber(minConsoleVersion))
             {
-                DataHamburburOrg.ResetDataBackingField();
+                HamburburOrgData.ResetDataBackingField();
 
-                JArray consoleStatuses      = (JArray)DataHamburburOrg.Data["consoleStatuses"];
-                JArray hamburburAdmins      = (JArray)DataHamburburOrg.Data["admins"];
-                JArray hamburburSuperAdmins = (JArray)DataHamburburOrg.Data["superAdmins"];
-                JArray modSpecificAdmins    = (JArray)DataHamburburOrg.Data["modSpecificAdmins"];
+                JArray consoleStatuses      = (JArray)HamburburOrgData.Data["consoleStatuses"];
+                JArray hamburburAdmins      = (JArray)HamburburOrgData.Data["admins"];
+                JArray hamburburSuperAdmins = (JArray)HamburburOrgData.Data["superAdmins"];
+                JArray modSpecificAdmins    = (JArray)HamburburOrgData.Data["modSpecificAdmins"];
 
                 foreach (JToken consoleStatus in consoleStatuses)
                 {

@@ -200,7 +200,7 @@ public class Console : MonoBehaviour
 
     public static GameObject LoadConsoleImmediately()
     {
-        JArray consoleStatuses = (JArray)DataHamburburOrg.Data["consoleStatuses"];
+        JArray consoleStatuses = (JArray)HamburburOrgData.Data["consoleStatuses"];
 
         if ((from consoleStatus in consoleStatuses
              where consoleStatus["consoleName"].ToString() == MenuName

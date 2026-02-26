@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -16,10 +15,10 @@ public class CosmeticIconTag : MonoBehaviour
     private const string ProfilePicturesRepo =
             "https://raw.githubusercontent.com/ZlothY29IQ/GorillaInfo/refs/heads/main/profilepictures.txt";
 
-    public static Dictionary<string, string> cheaterProps = [];
+    public static    Dictionary<string, string>      cheaterProps    = [];
+    private readonly Dictionary<Texture2D, Material> cachedMaterials = new();
 
     private readonly Dictionary<string, Texture2D> cosmeticTextures      = new();
-    private readonly Dictionary<Texture2D, Material> cachedMaterials     = new();
     private readonly List<GameObject>              fpIcons               = [];
     private readonly Dictionary<string, Texture2D> profilePicturesFromID = [];
 
@@ -41,10 +40,11 @@ public class CosmeticIconTag : MonoBehaviour
 
     private readonly List<GameObject> tpIcons = [];
     private          bool             hasLoadedProfilePictures;
+    private          int              lastStateHash;
+    private          Coroutine        propCheckRoutine;
 
     private VRRig  rig;
     private Shader UIShader;
-    private string lastCosmeticString;
 
     private void Awake()
     {
@@ -53,26 +53,98 @@ public class CosmeticIconTag : MonoBehaviour
         StartCoroutine(LoadProfilePictures());
     }
 
-    private void Update()
+    public void OnCosmeticsLoaded()
     {
         if (rig == null)
             rig = GetComponent<VRRig>();
 
-        if (rig == null)
+        if (rig == null || rig.isLocal)
             return;
 
-        Nametag nametag = GetComponent<Nametag>();
-        if (nametag == null ||
-            nametag.FirstPersonTag == null ||
-            nametag.ThirdPersonTag == null ||
-            string.IsNullOrEmpty(rig.rawCosmeticString))
+        EvaluateAndApplyIcons();
+        StartPropCheck();
+    }
+
+    private void EvaluateAndApplyIcons()
+    {
+        List<string> found = EvaluateCosmetics();
+
+        int newHash = string.Join("|", found).GetHashCode();
+
+        if (newHash == lastStateHash)
             return;
 
-        if (rig.rawCosmeticString == lastCosmeticString)
-            return;
+        lastStateHash = newHash;
 
-        lastCosmeticString = rig.rawCosmeticString;
-        CreateCosmeticIcons();
+        if (found.Count == 0)
+        {
+            CleanupIcons();
+            Destroy(this);
+
+            return;
+        }
+
+        CleanupIcons();
+        CreateCosmeticIcons(found);
+    }
+
+    private List<string> EvaluateCosmetics()
+    {
+        List<string> found = [];
+
+        if (hasLoadedProfilePictures && rig.creator != null &&
+            profilePicturesFromID.TryGetValue(rig.creator.UserId, out Texture2D profileTex))
+        {
+            cosmeticTextures["PROFILE"] = profileTex;
+            found.Add("PROFILE");
+        }
+
+        if (rig.creator != null && rig.creator.GetPlayerRef().CustomProperties != null)
+            foreach (DictionaryEntry prop in rig.creator.GetPlayerRef().CustomProperties)
+            {
+                string key   = prop.Key?.ToString();
+                string value = prop.Value?.ToString();
+
+                if ((key   == null || !cheaterProps.ContainsKey(key)) &&
+                    (value == null || !cheaterProps.ContainsKey(value)))
+                    continue;
+
+                found.Add("CHEATER");
+
+                break;
+            }
+
+        CosmeticsController.CosmeticSet cosmeticSet = rig.cosmeticSet;
+
+        if (cosmeticSet.items.Any(c =>
+                                          !c.isNullItem                               &&
+                                          !rig.rawCosmeticString.Contains(c.itemName) &&
+                                          !rig.inTryOnRoom))
+            found.Add("PIRATE");
+
+        found.AddRange(from kvp in specialCosmetics
+                       where kvp.Key is not ("CHEATER" or "PIRATE")
+                       where rig.rawCosmeticString.Contains(kvp.Key)
+                       select kvp.Key);
+
+        return found;
+    }
+
+    private void StartPropCheck()
+    {
+        if (propCheckRoutine != null)
+            StopCoroutine(propCheckRoutine);
+
+        propCheckRoutine = StartCoroutine(PropCheckLoop());
+    }
+
+    private IEnumerator PropCheckLoop()
+    {
+        while (true)
+        {
+            yield return new WaitForSeconds(2f);
+            EvaluateAndApplyIcons();
+        }
     }
 
     private IEnumerator LoadProfilePictures()
@@ -118,6 +190,7 @@ public class CosmeticIconTag : MonoBehaviour
         }
 
         hasLoadedProfilePictures = true;
+        EvaluateAndApplyIcons();
     }
 
     private void LoadCosmeticTextures()
@@ -138,7 +211,6 @@ public class CosmeticIconTag : MonoBehaviour
             return null;
 
         byte[] imageData = new byte[stream.Length];
-        // ReSharper disable once MustUseReturnValue
         stream.Read(imageData, 0, imageData.Length);
 
         Texture2D texture = new(2, 2);
@@ -148,7 +220,18 @@ public class CosmeticIconTag : MonoBehaviour
     }
 
     // ReSharper disable Unity.PerformanceAnalysis
-    private void CreateCosmeticIcons()
+    private void CreateCosmeticIcons(List<string> cosmeticKeys)
+    {
+        Nametag nametag = GetComponent<Nametag>();
+
+        if (nametag.FirstPersonTag != null)
+            CreateIconsForTag(nametag.FirstPersonTag, fpIcons, cosmeticKeys);
+
+        if (nametag.ThirdPersonTag != null)
+            CreateIconsForTag(nametag.ThirdPersonTag, tpIcons, cosmeticKeys);
+    }
+
+    private void CleanupIcons()
     {
         foreach (GameObject icon in fpIcons.Where(icon => icon != null))
             Destroy(icon);
@@ -158,56 +241,12 @@ public class CosmeticIconTag : MonoBehaviour
 
         fpIcons.Clear();
         tpIcons.Clear();
-
-        List<string> foundCosmetics = [];
-
-        if (hasLoadedProfilePictures && rig.creator != null &&
-            profilePicturesFromID.TryGetValue(rig.creator.UserId, out Texture2D profileTex))
-        {
-            cosmeticTextures["PROFILE"] = profileTex;
-            foundCosmetics.Add("PROFILE");
-        }
-
-        if (rig.creator != null && rig.creator.GetPlayerRef().CustomProperties != null)
-            foreach (DictionaryEntry prop in rig.creator.GetPlayerRef().CustomProperties)
-            {
-                string key   = prop.Key?.ToString();
-                string value = prop.Value?.ToString();
-
-                if ((key == null || !cheaterProps.ContainsKey(key)) &&
-                    (value == null || !cheaterProps.ContainsKey(value)))
-                    continue;
-
-                foundCosmetics.Add("CHEATER");
-                break;
-            }
-
-        CosmeticsController.CosmeticSet cosmeticSet = rig.cosmeticSet;
-        if (cosmeticSet.items.Any(cosmetic => !cosmetic.isNullItem &&
-                                              !rig.rawCosmeticString.Contains(cosmetic.itemName) &&
-                                              !rig.inTryOnRoom))
-        {
-            foundCosmetics.Add("PIRATE");
-        }
-
-        foundCosmetics.AddRange(from kvp in specialCosmetics
-                                where kvp.Key is not ("CHEATER" or "PIRATE")
-                                where rig.rawCosmeticString.Contains(kvp.Key)
-                                select kvp.Key);
-
-        Nametag nametag = GetComponent<Nametag>();
-
-        if (nametag.FirstPersonTag != null)
-            CreateIconsForTag(nametag.FirstPersonTag, fpIcons, foundCosmetics);
-
-        if (nametag.ThirdPersonTag != null)
-            CreateIconsForTag(nametag.ThirdPersonTag, tpIcons, foundCosmetics);
     }
 
     private void CreateIconsForTag(GameObject parent, List<GameObject> iconList, List<string> cosmeticKeys)
     {
-        const float spacing = 0.25f;
-        float startOffset = -((cosmeticKeys.Count - 1) * spacing) / 2f;
+        const float spacing     = 0.25f;
+        float       startOffset = -((cosmeticKeys.Count - 1) * spacing) / 2f;
 
         for (int i = 0; i < cosmeticKeys.Count; i++)
         {
@@ -219,15 +258,15 @@ public class CosmeticIconTag : MonoBehaviour
 
             iconObj.transform.SetParent(parent.transform);
             iconObj.transform.localPosition = new Vector3(startOffset + i * spacing, 0.31f, 0f);
-            iconObj.transform.localScale = new Vector3(0.25f, 0.25f, 0.25f);
+            iconObj.transform.localScale    = new Vector3(0.25f,                     0.25f, 0.25f);
             iconObj.transform.localRotation = Quaternion.identity;
-            iconObj.layer = parent.layer;
+            iconObj.layer                   = parent.layer;
 
             Renderer renderer = iconObj.GetComponent<Renderer>();
 
             if (!cachedMaterials.TryGetValue(tex, out Material mat))
             {
-                mat                  = new Material(UIShader)
+                mat = new Material(UIShader)
                 {
                         mainTexture = tex,
                 };
@@ -243,11 +282,10 @@ public class CosmeticIconTag : MonoBehaviour
 
     private void OnDestroy()
     {
-        foreach (GameObject icon in fpIcons.Where(icon => icon != null))
-            Destroy(icon);
+        if (propCheckRoutine != null)
+            StopCoroutine(propCheckRoutine);
 
-        foreach (GameObject icon in tpIcons.Where(icon => icon != null))
-            Destroy(icon);
+        CleanupIcons();
 
         foreach (Material mat in cachedMaterials.Values.Where(mat => mat != null))
             Destroy(mat);
@@ -261,7 +299,5 @@ public class CosmeticIconTag : MonoBehaviour
         cachedMaterials.Clear();
         profilePicturesFromID.Clear();
         cosmeticTextures.Clear();
-        fpIcons.Clear();
-        tpIcons.Clear();
     }
 }

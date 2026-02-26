@@ -4,7 +4,7 @@ using Newtonsoft.Json.Linq;
 
 namespace ZlothYNametag.Console;
 
-public static class DataHamburburOrg
+public static class HamburburOrgData
 {
     private static JObject DataBackingField;
 

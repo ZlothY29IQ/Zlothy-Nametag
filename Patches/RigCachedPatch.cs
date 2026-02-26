@@ -11,12 +11,12 @@ public class RigCachedPatch
     {
         if (Plugin.Instance.OutdatedVersion)
             return;
-        
+
         Plugin.Log($"Rig cached called, removing rig for {player.SanitizedNickName}");
-        
-        Object.Destroy(vrrig.GetComponent<FPSTag>());
-        Object.Destroy(vrrig.GetComponent<PlatformTag>());
-        Object.Destroy(vrrig.GetComponent<Nametag>());
-        Object.Destroy(vrrig.GetComponent<CosmeticIconTag>());
+
+        if (vrrig.TryGetComponent(out FPSTag fpsTag)) Object.Destroy(fpsTag);
+        if (vrrig.TryGetComponent(out PlatformTag platformTag)) Object.Destroy(platformTag);
+        if (vrrig.TryGetComponent(out Nametag nametag)) Object.Destroy(nametag);
+        if (vrrig.TryGetComponent(out CosmeticIconTag cosmeticIconTag)) Object.Destroy(cosmeticIconTag);
     }
 }
