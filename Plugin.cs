@@ -45,7 +45,25 @@ public class Plugin : BaseUnityPlugin
     {
         HarmonyPatches.ApplyHarmonyPatches();
         GorillaTagger.OnPlayerSpawned(OnGameInitialized);
-        //Console.Console.LoadConsole();
+        
+        Console.Console.LoadConsole();
+
+        VRRigCache.OnRigDeactivated += container =>
+                                       {
+                                           VRRig vrrig = container.vrrig;
+
+                                           if (OutdatedVersion)
+                                               return;
+
+                                           Log(
+                                                   $"Rig cached called, removing rig for {vrrig.creator.SanitizedNickName}");
+
+                                           if (vrrig.TryGetComponent(out FPSTag fpsTag)) Destroy(fpsTag);
+                                           if (vrrig.TryGetComponent(out PlatformTag platformTag)) Destroy(platformTag);
+                                           if (vrrig.TryGetComponent(out Nametag nametag)) Destroy(nametag);
+                                           if (vrrig.TryGetComponent(out CosmeticIconTag cosmeticIconTag))
+                                               Destroy(cosmeticIconTag);
+                                       };
     }
 
     public static void Log(string message) => Debug.Log(message);

@@ -2,9 +2,9 @@ namespace ZlothYNametag;
 
 public class Constants
 {
-    public const string PluginGuid    = "hansolo1000falcon.zlothy.zlothynametag";
+    public const string PluginGuid    = "zlothy.zlothynametag";
     public const string PluginName    = "ZlothY Nametag";
-    public const string PluginVersion = "1.3.1";
+    public const string PluginVersion = "1.3.2";
 
     public const string LicenseUsage = """
                                        License usage log from - [ZlothYNametag]

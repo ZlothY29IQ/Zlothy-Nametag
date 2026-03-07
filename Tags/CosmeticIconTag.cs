@@ -118,13 +118,13 @@ public class CosmeticIconTag : MonoBehaviour
 
         if (cosmeticSet.items.Any(c =>
                                           !c.isNullItem                               &&
-                                          !rig.rawCosmeticString.Contains(c.itemName) &&
+                                          !string.Concat(rig._playerOwnedCosmetics).Contains(c.itemName) &&
                                           !rig.inTryOnRoom))
             found.Add("PIRATE");
 
         found.AddRange(from kvp in specialCosmetics
                        where kvp.Key is not ("CHEATER" or "PIRATE")
-                       where rig.rawCosmeticString.Contains(kvp.Key)
+                       where string.Concat(rig._playerOwnedCosmetics).Contains(kvp.Key)
                        select kvp.Key);
 
         return found;
