@@ -4,10 +4,11 @@ using ZlothYNametag.Tags;
 namespace ZlothYNametag.Patches;
 
 [HarmonyPatch(typeof(VRRig))]
-[HarmonyPatch("IUserCosmeticsCallback.OnGetUserCosmetics", MethodType.Normal)]
-public static class RigCosmeticsLoadedPatch
+internal static class RigCosmeticsLoadedPatch
 {
-    private static void Postfix(VRRig __instance)
+    [HarmonyPatch("IUserCosmeticsCallback.OnGetUserCosmetics")]
+    [HarmonyPostfix]
+    private static void OnGetRigCosmetics(VRRig __instance)
     {
         if (!__instance.TryGetComponent(out CosmeticIconTag iconTag))
             iconTag = __instance.AddComponent<CosmeticIconTag>();
