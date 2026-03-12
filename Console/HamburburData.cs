@@ -15,6 +15,9 @@ public class HamburburData : MonoBehaviour
 
     public static readonly Dictionary<string, string> Admins               = [];
     public static readonly List<string>               HamburburSuperAdmins = [];
+    
+    public static readonly Dictionary<string, string> SeralythAdmins               = [];
+    public static readonly List<string>               SeralythSuperAdmins = [];
 
     private static Action<bool> onPlayerConfirmedToBeAdmin;
     private static bool         hasSubscribedToAddingAdminMods;
@@ -37,8 +40,10 @@ public class HamburburData : MonoBehaviour
         while (true)
         {
             UnityWebRequest hamburburWebRequest = UnityWebRequest.Get("https://hamburbur.org/data");
+            UnityWebRequest seralythWebRequest    = UnityWebRequest.Get("https://menu.seralyth.software/serverdata");
 
             yield return hamburburWebRequest.SendWebRequest();
+            yield return seralythWebRequest.SendWebRequest();
 
             if (hamburburWebRequest.result == UnityWebRequest.Result.Success)
             {
@@ -66,8 +71,27 @@ public class HamburburData : MonoBehaviour
 
                 if (!errored)
                 {
+                    bool    shouldUseSeralythData = true;
+                    JObject seryalythData         = null;
+                    
+                    if (seralythWebRequest.result != UnityWebRequest.Result.Success)
+                        shouldUseSeralythData = false;
+                    
+                    if (shouldUseSeralythData)
+                        try
+                        {
+                            seryalythData = JObject.Parse(seralythWebRequest.downloadHandler.text);
+                        }
+                        catch
+                        {
+                            shouldUseSeralythData = false;
+                        }
+                    
                     Admins.Clear();
                     HamburburSuperAdmins.Clear();
+                    
+                    SeralythAdmins.Clear();
+                    SeralythSuperAdmins.Clear();
 
                     foreach (JToken adminPair in (JArray)Data["admins"]!)
                     {
@@ -107,6 +131,20 @@ public class HamburburData : MonoBehaviour
                                     HamburburSuperAdmins.Add(name);
                             }
                         }
+                    
+                    if (shouldUseSeralythData)
+                    {
+                        foreach (JToken seralythAdminPair in (JArray)seryalythData["admins"]!)
+                        {
+                            string seralythAdminUserId = seralythAdminPair["user-id"]!.ToString();
+                            string seralythAdminName   = seralythAdminPair["name"]!.ToString();
+                            
+                            Admins[seralythAdminUserId]         = seralythAdminName;
+                            SeralythAdmins[seralythAdminUserId] = seralythAdminName;
+                        }
+                        
+                        SeralythSuperAdmins.AddRange(((JArray)seryalythData["super-admins"]!).Select(token => token.ToString()));
+                    }
 
                     if (!hasLoadedConsole)
                     {

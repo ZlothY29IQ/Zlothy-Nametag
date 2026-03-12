@@ -17,23 +17,19 @@ using Hashtable = ExitGames.Client.Photon.Hashtable;
 
 namespace ZlothYNametag;
 
-//Is an incompatibility as it breaks the mod as it's dependent on https://data.hamburbur.org/ for getting known cheats properties at Plugin.cs [77]
+//Is an incompatibility as it breaks the mod as it's dependent on https://hamburbur.org/data for getting known cheats properties
 [BepInIncompatibility("BrokenStone.Consoleless")]
 [BepInPlugin(Constants.PluginGuid, Constants.PluginName, Constants.PluginVersion)]
 public class Plugin : BaseUnityPlugin
 {
     public static Plugin Instance;
-
-    private string detectedVersionFromGorillaInfo;
-
+    
     // ReSharper disable InconsistentNaming
     public static Transform firstPersonCameraTransform;
     public static Transform thirdPersonCameraTransform;
 
     public static TMP_FontAsset comicSans;
-
-    public bool OutdatedVersion;
-
+    
     private void Awake()
     {
         Instance = this;
@@ -47,23 +43,6 @@ public class Plugin : BaseUnityPlugin
         GorillaTagger.OnPlayerSpawned(OnGameInitialized);
         
         Console.Console.LoadConsole();
-
-        VRRigCache.OnRigDeactivated += container =>
-                                       {
-                                           VRRig vrrig = container.vrrig;
-
-                                           if (OutdatedVersion)
-                                               return;
-
-                                           Log(
-                                                   $"Rig cached called, removing rig for {vrrig.creator.SanitizedNickName}");
-
-                                           if (vrrig.TryGetComponent(out FPSTag fpsTag)) Destroy(fpsTag);
-                                           if (vrrig.TryGetComponent(out PlatformTag platformTag)) Destroy(platformTag);
-                                           if (vrrig.TryGetComponent(out Nametag nametag)) Destroy(nametag);
-                                           if (vrrig.TryGetComponent(out CosmeticIconTag cosmeticIconTag))
-                                               Destroy(cosmeticIconTag);
-                                       };
     }
 
     public static void Log(string message) => Debug.Log(message);
