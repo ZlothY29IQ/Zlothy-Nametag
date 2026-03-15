@@ -41,14 +41,15 @@ public class Plugin : BaseUnityPlugin
     {
         HarmonyPatches.ApplyHarmonyPatches();
         GorillaTagger.OnPlayerSpawned(OnGameInitialized);
-        
-        Console.Console.LoadConsole();
     }
 
     public static void Log(string message) => Debug.Log(message);
 
     private void OnGameInitialized()
     {
+        GameObject hamburburDataContainer = new("ZlothYNametagsHamburburData");
+        hamburburDataContainer.AddComponent<HamburburData>();
+        
         VersionCheckingInitializer.StartVersionChecking();
 
         if (VersionCheckingInitializer.VersionOutdated)
