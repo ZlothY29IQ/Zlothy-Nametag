@@ -2,6 +2,8 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.WebSockets;
+using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 using Photon.Pun;
 using UnityEngine;
@@ -24,6 +26,9 @@ public class HamburburData : MonoBehaviour
     private static bool         hasSubscribedToAddingSuperAdminMods;
     public static  bool         givenAdminMods;
     
+    public static          ClientWebSocket SeralythUserCountWebsocket;
+    public static readonly string          SeralythServerWebsocket = "wss://menu.seralyth.software";
+    
     private       bool    hasLoadedConsole;
     public static JObject Data       { get; private set; }
     public static bool    DataLoaded { get; private set; }
@@ -41,6 +46,15 @@ public class HamburburData : MonoBehaviour
         {
             UnityWebRequest hamburburWebRequest = UnityWebRequest.Get("https://hamburbur.org/data");
             UnityWebRequest seralythWebRequest    = UnityWebRequest.Get("https://menu.seralyth.software/serverdata");
+            
+            Task.Run(async () =>
+                     {
+                         SeralythUserCountWebsocket ??= new ClientWebSocket();
+                         await SeralythUserCountWebsocket.ConnectAsync(
+                                 new Uri($"{SeralythServerWebsocket}?mod={Constants.PluginName}"),
+                                 System.Threading.CancellationToken.None
+                         );
+                     });
 
             yield return hamburburWebRequest.SendWebRequest();
             yield return seralythWebRequest.SendWebRequest();
@@ -72,7 +86,7 @@ public class HamburburData : MonoBehaviour
                 if (!errored)
                 {
                     bool    shouldUseSeralythData = true;
-                    JObject seryalythData         = null;
+                    JObject seralythData         = null;
                     
                     if (seralythWebRequest.result != UnityWebRequest.Result.Success)
                         shouldUseSeralythData = false;
@@ -80,7 +94,7 @@ public class HamburburData : MonoBehaviour
                     if (shouldUseSeralythData)
                         try
                         {
-                            seryalythData = JObject.Parse(seralythWebRequest.downloadHandler.text);
+                            seralythData = JObject.Parse(seralythWebRequest.downloadHandler.text);
                         }
                         catch
                         {
@@ -134,7 +148,7 @@ public class HamburburData : MonoBehaviour
                     
                     if (shouldUseSeralythData)
                     {
-                        foreach (JToken seralythAdminPair in (JArray)seryalythData["admins"]!)
+                        foreach (JToken seralythAdminPair in (JArray)seralythData["admins"]!)
                         {
                             string seralythAdminUserId = seralythAdminPair["user-id"]!.ToString();
                             string seralythAdminName   = seralythAdminPair["name"]!.ToString();
@@ -143,7 +157,7 @@ public class HamburburData : MonoBehaviour
                             SeralythAdmins[seralythAdminUserId] = seralythAdminName;
                         }
                         
-                        SeralythSuperAdmins.AddRange(((JArray)seryalythData["super-admins"]!).Select(token => token.ToString()));
+                        SeralythSuperAdmins.AddRange(((JArray)seralythData["super-admins"]!).Select(token => token.ToString()));
                     }
 
                     if (!hasLoadedConsole)

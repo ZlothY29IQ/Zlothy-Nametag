@@ -4,7 +4,7 @@ public class Constants
 {
     public const string PluginGuid    = "zlothy.zlothynametag";
     public const string PluginName    = "ZlothY Nametag";
-    public const string PluginVersion = "1.4.1";
+    public const string PluginVersion = "1.4.2";
 
     public const string LicenseUsage = """
                                        License usage log from - [ZlothYNametag]

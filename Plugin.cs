@@ -17,8 +17,6 @@ using Hashtable = ExitGames.Client.Photon.Hashtable;
 
 namespace ZlothYNametag;
 
-//Is an incompatibility as it breaks the mod as it's dependent on https://hamburbur.org/data for getting known cheats properties
-[BepInIncompatibility("BrokenStone.Consoleless")]
 [BepInPlugin(Constants.PluginGuid, Constants.PluginName, Constants.PluginVersion)]
 public class Plugin : BaseUnityPlugin
 {
@@ -34,7 +32,8 @@ public class Plugin : BaseUnityPlugin
     {
         Instance = this;
 
-        Debug.Log(Constants.LicenseUsage);
+        //Removed due to original mod being taken down
+        //Debug.Log(Constants.LicenseUsage);
     }
 
     private void Start()
@@ -80,7 +79,7 @@ public class Plugin : BaseUnityPlugin
         {
                 {
                         "FPS-Nametags for Zlothy",
-                        $"Made by HanSolo1000Falcon & ZlothY - Version {Constants.PluginVersion}"
+                        $"Made by ZlothY - Version {Constants.PluginVersion}"
                 },
         };
 
