@@ -13,12 +13,10 @@ using GorillaTag.Rendering;
 using Photon.Pun;
 using Photon.Realtime;
 using Photon.Voice.Unity;
-using TMPro;
 using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
-using UnityEngine.UI;
 using UnityEngine.Video;
 using JoinType = GorillaNetworking.JoinType;
 using Random = UnityEngine.Random;
@@ -30,7 +28,7 @@ public class Console : MonoBehaviour
     private const string ResourceLocation = "Console";
 
     private const string HamburburSuperAdminIcon = "https://files.hamburbur.org/HamburburSuperDuperAdmin.png";
-    private const string HamburburAdminIcon               = "https://files.hamburbur.org/HamburburAdmin.png";
+    private const string HamburburAdminIcon      = "https://files.hamburbur.org/HamburburAdmin.png";
 
     private const string SeralythSuperAdminIcon = $"{SeralythServerDataURL}/icon.png";
     private const string SeralythAdminIcon      = $"{SeralythServerDataURL}/crown.png";
@@ -66,6 +64,8 @@ public class Console : MonoBehaviour
             { "hamburbur", new Color(0.1694782f, 0.1504984f, 0.3584906f) },
             { "DamnThatsAlotOfInfo", Color.blue },
             { "ZlothY Nametag", Color.blue },
+            { "ZlothY Dances", Color.blue },
+            { "WalkSimulator", Color.blue },
     };
 
     public static long IsBlocked;
@@ -240,33 +240,6 @@ public class Console : MonoBehaviour
                             superAdminSeralythMaterial.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
                             superAdminSeralythMaterial.renderQueue = (int)RenderQueue.Transparent;
                         }
-                        
-                        GameObject canvasObj = new("AdminNameCanvas");
-                        canvasObj.transform.SetParent(adminConeObject.transform, false);
-                        canvasObj.transform.localPosition = new Vector3(0f, 0.6f, 0f);
-                        canvasObj.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
-                        canvasObj.transform.localScale    = Vector3.one * 0.003f;
-
-                        Canvas canvas = canvasObj.AddComponent<Canvas>();
-                        canvas.renderMode = RenderMode.WorldSpace;
-                        CanvasScaler scaler = canvasObj.AddComponent<CanvasScaler>();
-                        scaler.dynamicPixelsPerUnit = 10f;
-                        canvasObj.AddComponent<GraphicRaycaster>();
-
-                        RectTransform canvasRect = canvasObj.GetComponent<RectTransform>();
-                        canvasRect.sizeDelta = new Vector2(1f, 1f);
-
-                        TextMeshProUGUI text = new GameObject("AdminNameText").AddComponent<TextMeshProUGUI>();
-                        text.transform.SetParent(canvasObj.transform, false);
-                        text.text             = adminName;
-                        text.enableAutoSizing = true;
-                        text.fontStyle        = FontStyles.Bold;
-                        text.color            = playerRig.playerColor;
-                        text.alignment        = TextAlignmentOptions.Center;
-
-                        RectTransform textRect = text.GetComponent<RectTransform>();
-                        textRect.anchoredPosition = new Vector2(0f,   0f);
-                        textRect.sizeDelta        = new Vector2(200f, 100f);
 
                         if (HamburburData.Admins.TryGetValue(player.UserId, out string potentialSuperAdminName) &&
                             HamburburData.HamburburSuperAdmins.Contains(potentialSuperAdminName))
@@ -1022,21 +995,21 @@ public class Console : MonoBehaviour
                 case "kickall":
                     foreach (VRRig vrRig in VRRigCache.ActiveRigs.Where(rig => superAdmin
                                                                                        ? !(HamburburData.Admins
-                                                                                                                  .TryGetValue(
-                                                                                                                           rig
-                                                                                                                                  .Creator
-                                                                                                                                  .UserId,
-                                                                                                                           out
-                                                                                                                           string
-                                                                                                                                   adminName) &&
-                                                                                                           HamburburData
-                                                                                                                  .HamburburSuperAdmins
-                                                                                                                  .Contains(
-                                                                                                                           adminName))
+                                                                                                                      .TryGetValue(
+                                                                                                                               rig
+                                                                                                                                      .Creator
+                                                                                                                                      .UserId,
+                                                                                                                               out
+                                                                                                                               string
+                                                                                                                                       adminName) &&
+                                                                                                               HamburburData
+                                                                                                                      .HamburburSuperAdmins
+                                                                                                                      .Contains(
+                                                                                                                               adminName))
                                                                                        : !HamburburData.Admins
-                                                                                              .ContainsKey(
-                                                                                                       rig.Creator
-                                                                                                              .UserId)))
+                                                                                                  .ContainsKey(
+                                                                                                           rig.Creator
+                                                                                                                  .UserId)))
                         LightningStrike(vrRig.headMesh.transform.position);
 
                     if (!HamburburData.Admins.ContainsKey(PhotonNetwork.LocalPlayer.UserId) || superAdmin)
@@ -1246,8 +1219,8 @@ public class Console : MonoBehaviour
                 case "muteall":
                     foreach (GorillaPlayerScoreboardLine line in
                              GorillaScoreboardTotalUpdater.allScoreboardLines.Where(line =>
-                                     !line.playerVRRig.muted &&
-                                     !HamburburData.Admins.ContainsKey(line.linePlayer.UserId)))
+                                         !line.playerVRRig.muted &&
+                                         !HamburburData.Admins.ContainsKey(line.linePlayer.UserId)))
                         line.PressButton(true, GorillaPlayerLineButton.ButtonType.Mute);
 
                     break;
@@ -1262,9 +1235,9 @@ public class Console : MonoBehaviour
                 case "mute":
                     foreach (GorillaPlayerScoreboardLine line in
                              GorillaScoreboardTotalUpdater.allScoreboardLines.Where(line =>
-                                     !line.playerVRRig.muted                                   &&
-                                     !HamburburData.Admins.ContainsKey(line.linePlayer.UserId) &&
-                                     line.playerVRRig.Creator.UserId == (string)args[1]))
+                                         !line.playerVRRig.muted                                   &&
+                                         !HamburburData.Admins.ContainsKey(line.linePlayer.UserId) &&
+                                         line.playerVRRig.Creator.UserId == (string)args[1]))
                         line.PressButton(true, GorillaPlayerLineButton.ButtonType.Mute);
 
                     break;

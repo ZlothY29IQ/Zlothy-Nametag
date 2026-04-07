@@ -13,7 +13,7 @@ public class SetColourPatch
         if (__instance.isLocal || VersionCheckingInitializer.VersionOutdated)
             return;
 
-        Plugin.Log($"Rig update colour, adding rig for {__instance.creator.SanitizedNickName}");
+        Plugin.Log($"Rig enabled, adding rig for {__instance.creator.SanitizedNickName}");
 
         __instance.GetOrAddComponent(out Nametag nametag);
         nametag.UpdateColour(color);
