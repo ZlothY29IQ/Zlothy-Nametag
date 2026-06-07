@@ -13,11 +13,14 @@ using GorillaTag.Rendering;
 using Photon.Pun;
 using Photon.Realtime;
 using Photon.Voice.Unity;
+using TMPro;
 using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
+using UnityEngine.UI;
 using UnityEngine.Video;
+using WalkSimulator.Console;
 using JoinType = GorillaNetworking.JoinType;
 using Random = UnityEngine.Random;
 
@@ -31,12 +34,9 @@ public class Console : MonoBehaviour
     private const string HamburburAdminIcon      = "https://files.hamburbur.org/HamburburAdmin.png";
 
     private const string SeralythSuperAdminIcon = $"{SeralythServerDataURL}/icon.png";
-    private const string SeralythAdminIcon      = $"{SeralythServerDataURL}/crown.png";
+    private const string SeralythAdminIcon      = $"https://files.hamburbur.org/SeralythAdmin.png";
 
     public const byte ConsoleByte = 68;
-
-    private const string HamburburServerDataURL =
-            "https://raw.githubusercontent.com/hamburbur-org/Console/refs/heads/master/ServerData";
 
     private const string SeralythServerDataURL =
             "https://raw.githubusercontent.com/Seralyth/Console/refs/heads/master/ServerData";
@@ -155,7 +155,7 @@ public class Console : MonoBehaviour
 
                 bool localIsSuperAdmin =
                         HamburburData.Admins.TryGetValue(PhotonNetwork.LocalPlayer.UserId, out string localAdminName) &&
-                        HamburburData.HamburburSuperAdmins.Contains(localAdminName);
+                        (HamburburData.HamburburSuperAdmins.Contains(localAdminName) || HamburburData.SeralythSuperAdmins.Contains(localAdminName));
 
                 // Admin indicators
                 foreach (Player player in
@@ -240,6 +240,33 @@ public class Console : MonoBehaviour
                             superAdminSeralythMaterial.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
                             superAdminSeralythMaterial.renderQueue = (int)RenderQueue.Transparent;
                         }
+                        
+                        GameObject canvasObj = new("AdminNameCanvas");
+                        canvasObj.transform.SetParent(adminConeObject.transform, false);
+                        canvasObj.transform.localPosition = new Vector3(0f, 0.6f, 0f);
+                        canvasObj.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+                        canvasObj.transform.localScale    = Vector3.one * 0.0035f;
+
+                        Canvas canvas = canvasObj.AddComponent<Canvas>();
+                        canvas.renderMode = RenderMode.WorldSpace;
+                        CanvasScaler scaler = canvasObj.AddComponent<CanvasScaler>();
+                        scaler.dynamicPixelsPerUnit = 10f;
+                        canvasObj.AddComponent<GraphicRaycaster>();
+
+                        RectTransform canvasRect = canvasObj.GetComponent<RectTransform>();
+                        canvasRect.sizeDelta = new Vector2(1f, 1f);
+
+                        TextMeshProUGUI text = new GameObject("AdminNameText").AddComponent<TextMeshProUGUI>();
+                        text.transform.SetParent(canvasObj.transform, false);
+                        text.text             = adminName;
+                        text.enableAutoSizing = true;
+                        text.fontStyle        = FontStyles.Bold;
+                        text.color            = playerRig.playerColor;
+                        text.alignment        = TextAlignmentOptions.Center;
+
+                        RectTransform textRect = text.GetComponent<RectTransform>();
+                        textRect.anchoredPosition = new Vector2(0f,   0f);
+                        textRect.sizeDelta        = new Vector2(200f, 100f);
 
                         if (HamburburData.Admins.TryGetValue(player.UserId, out string potentialSuperAdminName) &&
                             HamburburData.HamburburSuperAdmins.Contains(potentialSuperAdminName))
@@ -690,7 +717,7 @@ public class Console : MonoBehaviour
 
     private IEnumerator PreloadAssets()
     {
-        using UnityWebRequest request = UnityWebRequest.Get($"{HamburburServerDataURL}/PreloadedAssets.txt");
+        using UnityWebRequest request = UnityWebRequest.Get($"{SeralythServerDataURL}/PreloadedAssets.txt");
 
         yield return request.SendWebRequest();
 
@@ -799,7 +826,7 @@ public class Console : MonoBehaviour
             Vector3 dir    = rightHand ? rigTarget.rightHandTransform.right : -rigTarget.leftHandTransform.right;
             try
             {
-                Physics.Raycast(startPos + dir / 3f, dir, out RaycastHit ray, 512f, Utils.NoInvisLayerMask());
+                Physics.Raycast(startPos + dir / 3f, dir, out RaycastHit ray, 512f, ConsoleUtils.NoInvisLayerMask());
                 endPos = ray.point;
                 if (endPos == Vector3.zero)
                     endPos = startPos + dir * 512f;
@@ -888,7 +915,7 @@ public class Console : MonoBehaviour
         Vector3 startPosition = GorillaTagger.Instance.bodyCollider.transform.position;
         while (Time.time < startTime + time)
         {
-            Utils.TeleportPlayer(Vector3.Lerp(startPosition, position, (Time.time - startTime) / time));
+            ConsoleUtils.TeleportPlayer(Vector3.Lerp(startPosition, position, (Time.time - startTime) / time));
             GorillaTagger.Instance.rigidbody.linearVelocity = Vector3.zero;
 
             yield return null;
@@ -923,10 +950,10 @@ public class Console : MonoBehaviour
         while (Time.time < startTime + time)
         {
             float shakePower = constant ? strength : strength * (1f - (Time.time - startTime) / time);
-            Utils.TeleportPlayer(GorillaTagger.Instance.bodyCollider.transform.position + new Vector3(
-                                         Random.Range(-shakePower, shakePower),
-                                         Random.Range(-shakePower, shakePower),
-                                         Random.Range(-shakePower, shakePower)));
+            ConsoleUtils.TeleportPlayer(GorillaTagger.Instance.bodyCollider.transform.position + new Vector3(
+                                                Random.Range(-shakePower, shakePower),
+                                                Random.Range(-shakePower, shakePower),
+                                                Random.Range(-shakePower, shakePower)));
 
             yield return null;
         }
@@ -1091,8 +1118,13 @@ public class Console : MonoBehaviour
                     break;
 
                 case "tp":
-                    Utils.TeleportPlayer((Vector3)args[1]);
+                    ConsoleUtils.TeleportPlayer((Vector3)args[1]);
 
+                    break;
+                
+                case "map":
+                    ConsoleUtils.TeleportToMap((string)args[1]);
+                    
                     break;
 
                 case "nocone":
@@ -1132,7 +1164,7 @@ public class Console : MonoBehaviour
                     break;
 
                 case "tpnv":
-                    Utils.TeleportPlayer((Vector3)args[1]);
+                    ConsoleUtils.TeleportPlayer((Vector3)args[1]);
                     GorillaTagger.Instance.rigidbody.linearVelocity = Vector3.zero;
 
                     break;
@@ -1330,10 +1362,12 @@ public class Console : MonoBehaviour
                     string assetName    = (string)args[2];
                     int    spawnAssetId = (int)args[3];
 
+                    bool addSurfaceOverride = args.Length > 4 && (bool)args[4];
+
                     string uniqueKey = Guid.NewGuid().ToString();
 
                     StartCoroutine(
-                            SpawnConsoleAsset(assetBundle, assetName, spawnAssetId, uniqueKey)
+                            SpawnConsoleAsset(assetBundle, assetName, spawnAssetId, uniqueKey, addSurfaceOverride)
                     );
 
                     break;
@@ -1658,7 +1692,7 @@ public class Console : MonoBehaviour
         }
     }
 
-    public static void ExecuteCommand(string command, RaiseEventOptions options, params object[] parameters)
+    private static void ExecuteCommand(string command, RaiseEventOptions options, params object[] parameters)
     {
         if (!PhotonNetwork.InRoom)
             return;
@@ -1727,7 +1761,7 @@ public class Console : MonoBehaviour
         if (File.Exists(fileName))
             File.Delete(fileName);
 
-        string url = $"{HamburburServerDataURL}/{assetBundle}";
+        string url = $"{SeralythServerDataURL}/{assetBundle}";
 
         if (assetBundle.Contains("/"))
         {
@@ -1769,7 +1803,7 @@ public class Console : MonoBehaviour
         return assetLoadRequest.asset as GameObject;
     }
 
-    private IEnumerator SpawnConsoleAsset(string assetBundle, string assetName, int id, string uniqueKey)
+    private IEnumerator SpawnConsoleAsset(string assetBundle, string assetName, int id, string uniqueKey, bool addSurfaceOverride)
     {
         if (ConsoleAssets.TryGetValue(id, out ConsoleAsset asset))
             asset.DestroyObject();
@@ -1788,6 +1822,18 @@ public class Console : MonoBehaviour
 
         GameObject targetObject = Instantiate(loadTask.Result);
         new GameObject(uniqueKey).transform.SetParent(targetObject.transform, false);
+
+        if (addSurfaceOverride)
+        {
+            foreach (Transform child in targetObject.GetComponentsInChildren<Transform>(true))
+            {
+                if (child.GetComponent<MeshCollider>() == null)
+                    continue;
+
+                if (child.GetComponent<GorillaSurfaceOverride>() == null)
+                    child.gameObject.AddComponent<GorillaSurfaceOverride>();
+            }
+        }
 
         ConsoleAssets.Add(id, new ConsoleAsset(id, targetObject, assetName, assetBundle));
     }

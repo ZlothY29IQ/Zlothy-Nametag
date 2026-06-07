@@ -4,5 +4,5 @@ public class Constants
 {
     public const string PluginGuid    = "zlothy.zlothynametag";
     public const string PluginName    = "ZlothY Nametag";
-    public const string PluginVersion = "1.4.3";
+    public const string PluginVersion = "1.4.4";
 }

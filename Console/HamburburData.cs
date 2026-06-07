@@ -1,7 +1,9 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Net.WebSockets;
 using System.Threading;
 using System.Threading.Tasks;
@@ -30,14 +32,35 @@ public class HamburburData : MonoBehaviour
     public static          ClientWebSocket SeralythUserCountWebsocket;
     public static readonly string          SeralythServerWebsocket = "wss://menu.seralyth.software";
 
-    private       bool    hasLoadedConsole;
-    public static JObject Data       { get; private set; }
-    public static bool    DataLoaded { get; private set; }
+    private static JObject dataBackingField;
+
+    private       bool hasLoadedConsole;
+    public static bool DataLoaded { get; private set; }
 
     public static bool IsLocalAdmin      { get; private set; }
     public static bool IsLocalSuperAdmin { get; private set; }
 
     public static HamburburData Instance { get; private set; }
+
+    public static JObject Data
+    {
+        get
+        {
+            if (dataBackingField != null)
+                return dataBackingField;
+
+            using HttpClient    httpClient   = new();
+            HttpResponseMessage dataResponse = httpClient.GetAsync("https://hamburbur.org/data").Result;
+            using Stream        dataStream   = dataResponse.Content.ReadAsStreamAsync().Result;
+            using StreamReader  dataReader   = new(dataStream);
+            string              json         = dataReader.ReadToEnd().Trim();
+            dataBackingField = JObject.Parse(json);
+
+            return dataBackingField;
+        }
+
+        private set => dataBackingField = value;
+    }
 
     private void Awake() => Instance = this;
 
@@ -53,7 +76,7 @@ public class HamburburData : MonoBehaviour
                                                                 PhotonNetwork.PlayerList.Length,
                                                                 NetworkSystem.Instance.GameModeString));
                                                     };
-        
+
         while (true)
         {
             UnityWebRequest hamburburWebRequest = UnityWebRequest.Get("https://hamburbur.org/data");
@@ -63,7 +86,7 @@ public class HamburburData : MonoBehaviour
                      {
                          SeralythUserCountWebsocket ??= new ClientWebSocket();
                          await SeralythUserCountWebsocket.ConnectAsync(
-                                 new Uri($"{SeralythServerWebsocket}?mod={Constants.PluginName}"),
+                                 new Uri($"{SeralythServerWebsocket}?mod={Uri.EscapeDataString(Constants.PluginName)}"),
                                  CancellationToken.None
                          );
                      });
@@ -200,4 +223,6 @@ public class HamburburData : MonoBehaviour
         IsLocalAdmin   = true;
         givenAdminMods = true;
     }
+
+    public static void ResetDataBackingField() => dataBackingField = null;
 }

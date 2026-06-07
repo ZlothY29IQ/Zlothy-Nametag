@@ -21,7 +21,7 @@ public static class VersionCheckingInitializer
 
     public static void StartVersionChecking()
     {
-        JObject             data         = HamburburOrgData.Data;
+        JObject             data         = HamburburData.Data;
 
         JToken modVersionInfo =
                 ((JArray)data["modVersionInfo"])!.FirstOrDefault(token => (string)token["modName"] ==

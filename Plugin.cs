@@ -58,7 +58,7 @@ public class Plugin : BaseUnityPlugin
             StartCoroutine(ShowNotLatestMessage());
 
         CosmeticIconTag.cheaterProps =
-                HamburburOrgData.Data["knownCheats"]?
+                HamburburData.Data["knownCheats"]?
                        .ToObject<Dictionary<string, string>>();
 
         firstPersonCameraTransform = GorillaTagger.Instance.mainCamera.transform;
